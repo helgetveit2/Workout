@@ -1,9 +1,367 @@
 <!DOCTYPE html>
-<html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Test</title></head>
-<body style="font-family:sans-serif;text-align:center;padding:40px">
-<h1>It works!</h1>
-<p id="t"></p>
-<script>document.getElementById("t").textContent=new Date().toString();</script>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Training Log</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:#222;min-height:100vh;max-width:480px;margin:0 auto;padding:16px;padding-bottom:160px}
+input[type=number]{-moz-appearance:textfield}
+input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.hh{text-align:center;padding:24px 0 20px;border-bottom:1px solid #e0e0e0;margin-bottom:24px}
+.ht{font-size:24px;font-weight:800;letter-spacing:6px;color:#111}
+.hs{font-size:10px;letter-spacing:5px;color:#999;margin-top:4px}
+.hd{font-size:12px;color:#999;margin-top:12px}
+.dc{background:#fafafa;border:1px solid #e0e0e0;border-radius:8px;padding:16px;margin-bottom:12px}
+.dch{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.dcn{font-size:16px;font-weight:700;color:#111}
+.dcl{font-size:12px;color:#999;background:#eee;padding:2px 8px;border-radius:4px}
+.dce{font-size:11px;color:#777;line-height:1.6}
+.pi{color:#2d7a2d;margin-right:4px;font-weight:700}
+.pinfo{font-size:10px;color:#2d7a2d;margin-top:8px;letter-spacing:1px;text-transform:uppercase}
+.inp{font-size:10px;color:#b8860b;margin-top:6px;letter-spacing:1px;text-transform:uppercase}
+.lwd{font-size:10px;color:#aaa;margin-top:4px}
+.hdr{display:flex;align-items:center;gap:12px;padding-bottom:16px;border-bottom:1px solid #e0e0e0;margin-bottom:16px}
+.bb{background:none;border:none;color:#999;font-size:14px;cursor:pointer;font-family:inherit;padding:4px 0}
+.pt{font-size:18px;font-weight:700;color:#111}
+.dt{font-size:12px;color:#999;font-weight:400}
+.wd{font-size:11px;color:#999;margin-left:auto}
+.tb{background:#fff8e8;border:1px solid #e8d8a0;border-radius:8px;padding:10px 16px;display:flex;justify-content:space-between;align-items:center;margin-bottom:16px}
+.tt{font-size:20px;font-weight:700;color:#b8860b}
+.tc{background:none;border:none;color:#999;font-size:16px;cursor:pointer}
+.ec{background:#fafafa;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:10px;border-left:3px solid #e0e0e0}
+.ec.pa{border-left-color:#2d7a2d;background:#f4faf4}
+.ec.pb{border-left-color:#2d2d7a;background:#f4f4fa}
+.ec.pc{border-left-color:#7a2d2d;background:#faf4f4}
+.enr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.pbg{font-size:9px;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:1px;display:inline-block}
+.pbg.a{background:#d4ead4;color:#2d7a2d}
+.pbg.b{background:#d4d4ea;color:#2d2d7a}
+.pbg.c{background:#ead4d4;color:#7a2d2d}
+.en{font-size:13px;font-weight:600;color:#222}
+.lp{font-size:10px;color:#999;margin-bottom:4px}
+.ps{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.pst{font-size:10px;color:#bbb;background:#f0f0f0;padding:1px 5px;border-radius:3px}
+.nr{margin-bottom:8px}
+.nt{background:none;border:none;font-size:10px;color:#bbb;font-family:inherit;cursor:pointer;padding:2px 0}
+.ni{background:#fff;border:1px solid #ddd;border-radius:4px;color:#8a6d20;font-size:11px;padding:6px 8px;width:100%;font-family:inherit;outline:none;margin-top:4px;resize:none;height:32px;line-height:1.4}
+.ni:focus{border-color:#aaa}
+.nd{font-size:10px;color:#8a6d20;font-style:italic;line-height:1.4}
+.sr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.sn{font-size:10px;color:#ccc;width:14px;text-align:center}
+.si{background:#fff;border:1px solid #ddd;border-radius:4px;color:#222;font-size:13px;padding:6px 8px;width:60px;font-family:inherit;text-align:center;outline:none}
+.si:focus{border-color:#999}
+.ss{color:#ccc;font-size:12px}
+.bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #e0e0e0;padding:12px 16px;max-width:480px;margin:0 auto}
+.tbs{display:flex;gap:8px;justify-content:center;margin-bottom:8px}
+.tbtn{background:#f5f5f5;border:1px solid #ddd;border-radius:6px;color:#666;font-size:11px;padding:6px 14px;cursor:pointer;font-family:inherit}
+.fb{background:#e8f5e8;border:1px solid #a0d0a0;border-radius:8px;color:#2d7a2d;font-size:13px;font-weight:700;padding:12px;width:100%;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase}
+.hb{width:100%;margin-top:4px;padding:12px;background:transparent;border:1px solid #ddd;border-radius:8px;color:#999;font-size:12px;font-family:inherit;cursor:pointer;letter-spacing:2px;text-transform:uppercase}
+.hc{background:#fafafa;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-bottom:12px}
+.hch{display:flex;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #e0e0e0}
+.hcdn{font-size:14px;font-weight:700;color:#222}
+.hcdt{font-size:11px;color:#999}
+.he{margin-bottom:6px}
+.hen{font-size:11px;color:#777;margin-bottom:2px}
+.hss{display:flex;gap:8px;flex-wrap:wrap}
+.hst{font-size:11px;color:#777;background:#f0f0f0;padding:2px 6px;border-radius:3px}
+.et{text-align:center;color:#ccc;font-size:12px;padding:40px}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+var PROGRAM = [
+  {id:"day1",name:"Day 1",dayLabel:"Mon",exercises:[
+    {id:"leg_press",name:"Leg Press",sets:3,pairLabel:"a"},
+    {id:"rdl_1",name:"Romanian Deadlift",sets:3,pairLabel:"a"},
+    {id:"leg_ext",name:"Leg Extension",sets:3,pairLabel:"b"},
+    {id:"leg_curl",name:"Seated Leg Curl",sets:3,pairLabel:"b"},
+    {id:"bicep_curl",name:"Bicep Curl (Cable)",sets:3,pairLabel:"c"},
+    {id:"tri_push",name:"Triceps Pushdown",sets:3,pairLabel:"c"},
+    {id:"chest_press",name:"Chest Press (Machine)",sets:3,pairLabel:null},
+    {id:"lat_raise1",name:"Lateral Raise",sets:3,pairLabel:null}
+  ]},
+  {id:"day2",name:"Day 2",dayLabel:"Wed",exercises:[
+    {id:"rdl_2",name:"Romanian Deadlift",sets:3,pairLabel:null},
+    {id:"lat_pull",name:"Lat Pulldown",sets:3,pairLabel:null},
+    {id:"hinge_row",name:"Hinge Row",sets:3,pairLabel:null},
+    {id:"hammer_curl",name:"Hammer Curl",sets:3,pairLabel:null},
+    {id:"landmine",name:"Landmine",sets:2,pairLabel:null},
+    {id:"face_pull",name:"Face Pull",sets:3,pairLabel:null}
+  ]},
+  {id:"day3",name:"Day 3",dayLabel:"Sat",exercises:[
+    {id:"bss",name:"Bulgarian Split Squat",sets:3,pairLabel:null},
+    {id:"seated_row",name:"Seated Row",sets:3,pairLabel:null},
+    {id:"incline_bench",name:"Incline Bench Press",sets:3,pairLabel:null},
+    {id:"chest_fly",name:"Chest Fly",sets:3,pairLabel:null},
+    {id:"plank",name:"Plank",sets:3,pairLabel:null}
+  ]}
+];
+
+var workoutData={};
+var historyData=[];
+var notesData={};
+var currentView="home";
+var currentDay=null;
+var timerInt=null;
+var timerSec=0;
+var openNotes={};
+
+function loadStorage(){
+  try{workoutData=JSON.parse(localStorage.getItem("ht-data"))||{};}catch(e){workoutData={};}
+  try{historyData=JSON.parse(localStorage.getItem("ht-history"))||[];}catch(e){historyData=[];}
+  try{notesData=JSON.parse(localStorage.getItem("ht-notes"))||{};}catch(e){notesData={};}
+}
+
+function saveAll(){
+  try{
+    localStorage.setItem("ht-data",JSON.stringify(workoutData));
+    localStorage.setItem("ht-history",JSON.stringify(historyData));
+    localStorage.setItem("ht-notes",JSON.stringify(notesData));
+  }catch(e){}
+}
+
+function fmtDate(d){
+  var days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+  var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()]+" "+d.getFullYear();
+}
+
+function esc(s){
+  if(!s)return"";
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function getSet(dayId,exId,i){
+  var k=dayId+"_"+exId;
+  if(workoutData[k]&&workoutData[k][i])return workoutData[k][i];
+  return{weight:"",reps:""};
+}
+
+function setSet(dayId,exId,i,field,val){
+  var k=dayId+"_"+exId;
+  if(!workoutData[k])workoutData[k]=[];
+  if(!workoutData[k][i])workoutData[k][i]={weight:"",reps:""};
+  workoutData[k][i][field]=val;
+  saveAll();
+}
+
+function setNote(exId,val){
+  notesData[exId]=val;
+  saveAll();
+}
+
+function toggleN(exId){
+  openNotes[exId]=!openNotes[exId];
+  render();
+  if(openNotes[exId]){
+    setTimeout(function(){
+      var el=document.getElementById("note-"+exId);
+      if(el)el.focus();
+    },100);
+  }
+}
+
+function closeN(exId){
+  var el=document.getElementById("note-"+exId);
+  if(el)setNote(exId,el.value);
+  openNotes[exId]=false;
+  render();
+}
+
+function getLastPerf(exId){
+  var base=exId.replace(/_\d+$/,"");
+  for(var i=0;i<historyData.length;i++){
+    var e=historyData[i];
+    var keys=Object.keys(e.exercises);
+    for(var j=0;j<keys.length;j++){
+      var k=keys[j];
+      if(k===exId||k.replace(/_\d+$/,"")===base){
+        return{date:e.date,sets:e.exercises[k].sets};
+      }
+    }
+  }
+  return null;
+}
+
+function getLastDate(dayId){
+  for(var i=0;i<historyData.length;i++){
+    if(historyData[i].dayId===dayId)return historyData[i].date;
+  }
+  return null;
+}
+
+function finish(dayId){
+  var day=null;
+  for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===dayId)day=PROGRAM[i];}
+  var entry={date:fmtDate(new Date()),dayId:dayId,dayName:day.name,exercises:{}};
+  for(var i=0;i<day.exercises.length;i++){
+    var ex=day.exercises[i];
+    var k=dayId+"_"+ex.id;
+    if(workoutData[k]){
+      var filled=[];
+      for(var j=0;j<workoutData[k].length;j++){
+        var s=workoutData[k][j];
+        if(s&&(s.weight||s.reps))filled.push(s);
+      }
+      if(filled.length)entry.exercises[ex.id]={name:ex.name,sets:filled};
+    }
+  }
+  historyData.unshift(entry);
+  if(historyData.length>100)historyData=historyData.slice(0,100);
+  for(var i=0;i<day.exercises.length;i++){
+    delete workoutData[dayId+"_"+day.exercises[i].id];
+  }
+  saveAll();
+  stopT();
+  currentView="home";currentDay=null;
+  render();
+}
+
+function startT(secs){
+  stopT();
+  timerSec=secs;
+  renderT();
+  timerInt=setInterval(function(){
+    timerSec--;
+    if(timerSec<=0)stopT();
+    renderT();
+  },1000);
+}
+
+function stopT(){
+  if(timerInt){clearInterval(timerInt);timerInt=null;}
+  timerSec=0;
+  var el=document.getElementById("tbar");
+  if(el)el.className="tb hidden";
+}
+
+function renderT(){
+  var el=document.getElementById("tbar");
+  if(!el)return;
+  if(timerSec>0){
+    el.className="tb";
+    var m=Math.floor(timerSec/60);
+    var s=timerSec%60;
+    if(s<10)s="0"+s;
+    el.querySelector(".tt").textContent="Rest: "+m+":"+s;
+  }else{
+    el.className="tb hidden";
+  }
+}
+
+function goDay(dayId){currentDay=dayId;currentView="workout";render();}
+function goHome(){currentView="home";currentDay=null;stopT();render();}
+function goHist(){currentView="history";render();}
+
+function render(){
+  var app=document.getElementById("app");
+  if(currentView==="home")renderHome(app);
+  else if(currentView==="workout")renderWO(app);
+  else if(currentView==="history")renderHist(app);
+}
+
+function renderHome(app){
+  var h='<div class="hh"><div class="ht">HELGE</div><div class="hs">TRAINING LOG</div><div class="hd">'+fmtDate(new Date())+'</div></div>';
+  for(var d=0;d<PROGRAM.length;d++){
+    var day=PROGRAM[d];
+    var hasData=false;
+    for(var i=0;i<day.exercises.length;i++){
+      if(workoutData[day.id+"_"+day.exercises[i].id]){hasData=true;break;}
+    }
+    var pairs={};
+    for(var i=0;i<day.exercises.length;i++){
+      if(day.exercises[i].pairLabel)pairs[day.exercises[i].pairLabel]=true;
+    }
+    var pairCount=Object.keys(pairs).length;
+    var exList="";
+    for(var i=0;i<day.exercises.length;i++){
+      var ex=day.exercises[i];
+      var icon=ex.pairLabel?'<span class="pi">\u2194</span>':"";
+      exList+='<div class="dce">'+icon+ex.name+'</div>';
+    }
+    var pairLine=pairCount?'<div class="pinfo">'+pairCount+" antagonist pair"+(pairCount>1?"s":"")+"</div>":"";
+    var prog=hasData?'<div class="inp">In progress</div>':"";
+    var ld=getLastDate(day.id);
+    var ldLine=ld?'<div class="lwd">Last: '+ld+'</div>':"";
+    h+='<div class="dc" onclick="goDay(\''+day.id+'\')"><div class="dch"><span class="dcn">'+day.name+'</span><span class="dcl">'+day.dayLabel+'</span></div>'+exList+pairLine+prog+ldLine+'</div>';
+  }
+  h+='<div class="hb" onclick="goHist()">View History</div>';
+  app.innerHTML=h;
+}
+
+function renderWO(app){
+  var day=null;
+  for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===currentDay)day=PROGRAM[i];}
+  var today=fmtDate(new Date());
+  var h='<div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">'+day.name+' <span class="dt">'+day.dayLabel+'</span></div><div class="wd">'+today+'</div></div>';
+  h+='<div id="tbar" class="tb hidden"><span class="tt"></span><button class="tc" onclick="stopT()">\u2715</button></div>';
+
+  for(var i=0;i<day.exercises.length;i++){
+    var ex=day.exercises[i];
+    var pc=ex.pairLabel?"p"+ex.pairLabel:"";
+    var badge=ex.pairLabel?'<span class="pbg '+ex.pairLabel+'">'+ex.pairLabel.toUpperCase()+'</span>':"";
+    var last=getLastPerf(ex.id);
+    var prevHtml="";
+    if(last){
+      prevHtml='<div class="lp">Prev ('+last.date+'):</div><div class="ps">';
+      for(var j=0;j<last.sets.length;j++){
+        prevHtml+='<span class="pst">'+last.sets[j].weight+'kg \u00d7 '+last.sets[j].reps+'</span>';
+      }
+      prevHtml+='</div>';
+    }
+    var noteVal=notesData[ex.id]||"";
+    var isOpen=openNotes[ex.id];
+    var noteHtml="";
+    if(isOpen){
+      noteHtml='<div class="nr"><textarea id="note-'+ex.id+'" class="ni" placeholder="e.g. squeeze at top..." onblur="closeN(\''+ex.id+'\')">'+esc(noteVal)+'</textarea></div>';
+    }else if(noteVal){
+      noteHtml='<div class="nr"><div class="nd" onclick="toggleN(\''+ex.id+'\')">'+esc(noteVal)+'</div></div>';
+    }else{
+      noteHtml='<div class="nr"><button class="nt" onclick="toggleN(\''+ex.id+'\')">+ note</button></div>';
+    }
+    var sets="";
+    for(var j=0;j<ex.sets;j++){
+      var sd=getSet(day.id,ex.id,j);
+      sets+='<div class="sr"><span class="sn">'+(j+1)+'</span><input class="si" type="number" inputmode="decimal" placeholder="kg" value="'+sd.weight+'" onchange="setSet(\''+day.id+"','"+ex.id+"',"+j+",'weight',this.value)\"><span class=\"ss\">\u00d7</span><input class=\"si\" type=\"number\" inputmode=\"numeric\" placeholder=\"reps\" value=\""+sd.reps+"\" onchange=\"setSet('"+day.id+"','"+ex.id+"',"+j+",'reps',this.value)\"></div>";
+    }
+    h+='<div class="ec '+pc+'"><div class="enr">'+badge+'<span class="en">'+ex.name+'</span></div>'+prevHtml+noteHtml+sets+'</div>';
+  }
+
+  h+='<div class="bar"><div class="tbs"><button class="tbtn" onclick="startT(60)">1:00</button><button class="tbtn" onclick="startT(90)">1:30</button><button class="tbtn" onclick="startT(120)">2:00</button><button class="tbtn" onclick="startT(180)">3:00</button></div><button class="fb" onclick="finish(\''+day.id+'\')">Finish Workout</button></div>';
+  app.innerHTML=h;
+}
+
+function renderHist(app){
+  var h='<div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">History</div></div>';
+  if(!historyData.length){
+    h+='<div class="et">No workouts logged yet</div>';
+  }else{
+    for(var i=0;i<historyData.length;i++){
+      var entry=historyData[i];
+      var exHtml="";
+      var keys=Object.keys(entry.exercises);
+      for(var j=0;j<keys.length;j++){
+        var ex=entry.exercises[keys[j]];
+        var sts="";
+        for(var k=0;k<ex.sets.length;k++){
+          sts+='<span class="hst">'+ex.sets[k].weight+'kg \u00d7 '+ex.sets[k].reps+'</span>';
+        }
+        exHtml+='<div class="he"><div class="hen">'+ex.name+'</div><div class="hss">'+sts+'</div></div>';
+      }
+      h+='<div class="hc"><div class="hch"><span class="hcdn">'+entry.dayName+'</span><span class="hcdt">'+entry.date+'</span></div>'+exHtml+'</div>';
+    }
+  }
+  app.innerHTML=h;
+}
+
+loadStorage();
+render();
+</script>
 </body>
 </html>
