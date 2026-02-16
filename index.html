@@ -37,7 +37,9 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .ec.pb{border-left-color:#1a1a6b;background:#eeeef6}
 .ec.pc{border-left-color:#6b1a1a;background:#f6eeee}
 .ec.done{background:#e8f5e8;border-color:#80b880;border-left-color:#1a6b1a}
+.ec.collapsed{padding:8px 12px;margin-bottom:6px}
 .enr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.enr.compact{margin-bottom:0}
 .pbg{font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:1px;display:inline-block}
 .pbg.a{background:#c0dcc0;color:#1a6b1a}
 .pbg.b{background:#c0c0dc;color:#1a1a6b}
@@ -58,12 +60,16 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .si:focus{border-color:#666}
 .ss{color:#999;font-size:14px}
 .cb{width:22px;height:22px;accent-color:#1a6b1a;cursor:pointer}
-.summary{font-size:13px;color:#1a6b1a;font-weight:600;padding:4px 0;cursor:pointer}
-.summary .arrow{font-size:11px;color:#888;margin-left:4px}
+.cline{display:flex;align-items:center;gap:6px;cursor:pointer;flex-wrap:wrap}
+.cline .en{font-size:14px}
+.ctag{font-size:11px;color:#1a6b1a;background:#d0e8d0;padding:1px 5px;border-radius:3px}
+.carrow{font-size:11px;color:#888;margin-left:auto}
 .bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ccc;padding:12px 16px;max-width:480px;margin:0 auto}
 .tbs{display:flex;gap:8px;justify-content:center;margin-bottom:8px}
 .tbtn{background:#f0f0f0;border:1px solid #bbb;border-radius:6px;color:#444;font-size:13px;padding:8px 16px;cursor:pointer;font-family:inherit}
-.fb{background:#e0f0e0;border:1px solid #80b880;border-radius:8px;color:#1a6b1a;font-size:14px;font-weight:700;padding:14px;width:100%;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase}
+.brow{display:flex;gap:8px}
+.fb{background:#e0f0e0;border:1px solid #80b880;border-radius:8px;color:#1a6b1a;font-size:14px;font-weight:700;padding:14px;flex:1;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase}
+.db{background:#fff;border:1px solid #cc4444;border-radius:8px;color:#cc4444;font-size:13px;font-weight:700;padding:14px 16px;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase}
 .hb{width:100%;margin-top:4px;padding:14px;background:transparent;border:1px solid #bbb;border-radius:8px;color:#666;font-size:13px;font-family:inherit;cursor:pointer;letter-spacing:2px;text-transform:uppercase}
 .hc{background:#f7f7f7;border:1px solid #ccc;border-radius:8px;padding:12px;margin-bottom:12px}
 .hch{display:flex;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #ccc}
@@ -266,6 +272,24 @@ function finish(dayId){
   render();
 }
 
+function delWorkout(dayId){
+  if(!confirm("Delete current workout data?"))return;
+  var day=null;
+  for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===dayId)day=PROGRAM[i];}
+  for(var i=0;i<day.exercises.length;i++){
+    var ek=dayId+"_"+day.exercises[i].id;
+    delete workoutData[ek];
+    for(var j=0;j<day.exercises[i].sets;j++){
+      delete checkedSets[ek+"_"+j];
+    }
+    delete collapsed[ek];
+  }
+  saveAll();
+  stopT();
+  currentView="home";currentDay=null;
+  render();
+}
+
 function startT(secs){
   stopT();
   timerSec=secs;
@@ -349,6 +373,26 @@ function renderWO(app){
     var ex=day.exercises[i];
     var pc=ex.pairLabel?"p"+ex.pairLabel:"";
     var allDone=allChecked(day.id,ex.id,ex.sets);
+    var coll=isCollapsed(day.id,ex.id);
+
+    if(allDone&&coll){
+      var sumParts=[];
+      for(var j=0;j<ex.sets;j++){
+        var sd=getSet(day.id,ex.id,j);
+        if(sd.weight||sd.reps){
+          sumParts.push(sd.weight+"\u00d7"+sd.reps);
+        }
+      }
+      var badge=ex.pairLabel?'<span class="pbg '+ex.pairLabel+'">'+ex.pairLabel.toUpperCase()+'</span>':"";
+      h+='<div class="ec done collapsed '+pc+'" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">";
+      h+='<div class="cline">'+badge+'<span class="en">'+ex.name+'</span>';
+      for(var j=0;j<sumParts.length;j++){
+        h+='<span class="ctag">'+sumParts[j]+'</span>';
+      }
+      h+='<span class="carrow">\u25BC</span></div></div>';
+      continue;
+    }
+
     var doneClass=allDone?" done":"";
     var badge=ex.pairLabel?'<span class="pbg '+ex.pairLabel+'">'+ex.pairLabel.toUpperCase()+'</span>':"";
     var last=getLastPerf(ex.id);
@@ -372,33 +416,20 @@ function renderWO(app){
     }
 
     var setsHtml="";
-    var coll=isCollapsed(day.id,ex.id);
-
-    if(allDone&&coll){
-      var sumParts=[];
-      for(var j=0;j<ex.sets;j++){
-        var sd=getSet(day.id,ex.id,j);
-        if(sd.weight||sd.reps){
-          sumParts.push(sd.weight+"kg \u00d7 "+sd.reps);
-        }
-      }
-      setsHtml='<div class="summary" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">"+"\u2705 "+sumParts.join("  |  ")+'<span class="arrow">\u25BC</span></div>';
-    }else{
-      for(var j=0;j<ex.sets;j++){
-        var sd=getSet(day.id,ex.id,j);
-        var chk=isChecked(day.id,ex.id,j);
-        var rowClass=chk?"sr checked":"sr";
-        setsHtml+='<div class="'+rowClass+'"><span class="sn">'+(j+1)+'</span><input class="si" type="number" inputmode="decimal" placeholder="kg" value="'+sd.weight+'" onchange="setSet(\''+day.id+"','"+ex.id+"',"+j+",'weight',this.value)\"><span class=\"ss\">\u00d7</span><input class=\"si\" type=\"number\" inputmode=\"numeric\" placeholder=\"reps\" value=\""+sd.reps+"\" onchange=\"setSet('"+day.id+"','"+ex.id+"',"+j+",'reps',this.value)\"><input type=\"checkbox\" class=\"cb\""+(chk?" checked":"")+" onchange=\"toggleCheck('"+day.id+"','"+ex.id+"',"+j+")\"></div>";
-      }
-      if(allDone){
-        setsHtml+='<div class="summary" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">Collapse<span class=\"arrow\">\u25B2</span></div>";
-      }
+    for(var j=0;j<ex.sets;j++){
+      var sd=getSet(day.id,ex.id,j);
+      var chk=isChecked(day.id,ex.id,j);
+      var rowClass=chk?"sr checked":"sr";
+      setsHtml+='<div class="'+rowClass+'"><span class="sn">'+(j+1)+'</span><input class="si" type="number" inputmode="decimal" placeholder="kg" value="'+sd.weight+'" onchange="setSet(\''+day.id+"','"+ex.id+"',"+j+",'weight',this.value)\"><span class=\"ss\">\u00d7</span><input class=\"si\" type=\"number\" inputmode=\"numeric\" placeholder=\"reps\" value=\""+sd.reps+"\" onchange=\"setSet('"+day.id+"','"+ex.id+"',"+j+",'reps',this.value)\"><input type=\"checkbox\" class=\"cb\""+(chk?" checked":"")+" onchange=\"toggleCheck('"+day.id+"','"+ex.id+"',"+j+")\"></div>";
+    }
+    if(allDone){
+      setsHtml+='<div style="text-align:right;margin-top:4px"><button style="background:none;border:none;color:#1a6b1a;font-size:12px;cursor:pointer;font-family:inherit" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">Collapse \u25B2</button></div>";
     }
 
     h+='<div class="ec '+pc+doneClass+'"><div class="enr">'+badge+'<span class="en">'+ex.name+'</span></div>'+prevHtml+noteHtml+setsHtml+'</div>';
   }
 
-  h+='<div class="bar"><div class="tbs"><button class="tbtn" onclick="startT(60)">1:00</button><button class="tbtn" onclick="startT(90)">1:30</button><button class="tbtn" onclick="startT(120)">2:00</button><button class="tbtn" onclick="startT(180)">3:00</button></div><button class="fb" onclick="finish(\''+day.id+'\')">Finish Workout</button></div>';
+  h+='<div class="bar"><div class="tbs"><button class="tbtn" onclick="startT(60)">1:00</button><button class="tbtn" onclick="startT(90)">1:30</button><button class="tbtn" onclick="startT(120)">2:00</button><button class="tbtn" onclick="startT(180)">3:00</button></div><div class="brow"><button class="fb" onclick="finish(\''+day.id+'\')">Finish Workout</button><button class="db" onclick="delWorkout(\''+day.id+'\')">Del</button></div></div>';
   app.innerHTML=h;
 }
 
