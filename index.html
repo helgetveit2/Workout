@@ -36,6 +36,7 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .ec.pa{border-left-color:#1a6b1a;background:#eef6ee}
 .ec.pb{border-left-color:#1a1a6b;background:#eeeef6}
 .ec.pc{border-left-color:#6b1a1a;background:#f6eeee}
+.ec.done{background:#e8f5e8;border-color:#80b880;border-left-color:#1a6b1a}
 .enr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
 .pbg{font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:1px;display:inline-block}
 .pbg.a{background:#c0dcc0;color:#1a6b1a}
@@ -51,10 +52,14 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .ni:focus{border-color:#888}
 .nd{font-size:12px;color:#7a5d10;font-style:italic;line-height:1.4}
 .sr{display:flex;align-items:center;gap:8px;margin-bottom:5px}
+.sr.checked{opacity:0.5}
 .sn{font-size:12px;color:#999;width:16px;text-align:center}
 .si{background:#fff;border:1px solid #bbb;border-radius:4px;color:#111;font-size:15px;padding:8px 8px;width:65px;font-family:inherit;text-align:center;outline:none}
 .si:focus{border-color:#666}
 .ss{color:#999;font-size:14px}
+.cb{width:22px;height:22px;accent-color:#1a6b1a;cursor:pointer}
+.summary{font-size:13px;color:#1a6b1a;font-weight:600;padding:4px 0;cursor:pointer}
+.summary .arrow{font-size:11px;color:#888;margin-left:4px}
 .bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ccc;padding:12px 16px;max-width:480px;margin:0 auto}
 .tbs{display:flex;gap:8px;justify-content:center;margin-bottom:8px}
 .tbtn{background:#f0f0f0;border:1px solid #bbb;border-radius:6px;color:#444;font-size:13px;padding:8px 16px;cursor:pointer;font-family:inherit}
@@ -78,7 +83,7 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 var PROGRAM = [
   {id:"day1",name:"Day 1",dayLabel:"Mon",exercises:[
     {id:"leg_press",name:"Leg Press",sets:3,pairLabel:"a"},
-    {id:"rdl_1",name:"Romanian Deadlift",sets:3,pairLabel:"a"},
+    {id:"glutes_1",name:"Glutes Machine",sets:3,pairLabel:"a"},
     {id:"leg_ext",name:"Leg Extension",sets:3,pairLabel:"b"},
     {id:"leg_curl",name:"Seated Leg Curl",sets:3,pairLabel:"b"},
     {id:"bicep_curl",name:"Bicep Curl (Cable)",sets:3,pairLabel:"c"},
@@ -87,7 +92,7 @@ var PROGRAM = [
     {id:"lat_raise1",name:"Lateral Raise",sets:3,pairLabel:null}
   ]},
   {id:"day2",name:"Day 2",dayLabel:"Wed",exercises:[
-    {id:"rdl_2",name:"Romanian Deadlift",sets:3,pairLabel:null},
+    {id:"glutes_2",name:"Glutes Machine",sets:3,pairLabel:null},
     {id:"lat_pull",name:"Lat Pulldown",sets:3,pairLabel:null},
     {id:"hinge_row",name:"Hinge Row",sets:3,pairLabel:null},
     {id:"hammer_curl",name:"Hammer Curl",sets:3,pairLabel:null},
@@ -106,6 +111,8 @@ var PROGRAM = [
 var workoutData={};
 var historyData=[];
 var notesData={};
+var checkedSets={};
+var collapsed={};
 var currentView="home";
 var currentDay=null;
 var timerInt=null;
@@ -116,6 +123,7 @@ function loadStorage(){
   try{workoutData=JSON.parse(localStorage.getItem("ht-data"))||{};}catch(e){workoutData={};}
   try{historyData=JSON.parse(localStorage.getItem("ht-history"))||[];}catch(e){historyData=[];}
   try{notesData=JSON.parse(localStorage.getItem("ht-notes"))||{};}catch(e){notesData={};}
+  try{checkedSets=JSON.parse(localStorage.getItem("ht-checked"))||{};}catch(e){checkedSets={};}
 }
 
 function saveAll(){
@@ -123,6 +131,7 @@ function saveAll(){
     localStorage.setItem("ht-data",JSON.stringify(workoutData));
     localStorage.setItem("ht-history",JSON.stringify(historyData));
     localStorage.setItem("ht-notes",JSON.stringify(notesData));
+    localStorage.setItem("ht-checked",JSON.stringify(checkedSets));
   }catch(e){}
 }
 
@@ -149,6 +158,35 @@ function setSet(dayId,exId,i,field,val){
   if(!workoutData[k][i])workoutData[k][i]={weight:"",reps:""};
   workoutData[k][i][field]=val;
   saveAll();
+}
+
+function isChecked(dayId,exId,i){
+  var k=dayId+"_"+exId+"_"+i;
+  return checkedSets[k]===true;
+}
+
+function toggleCheck(dayId,exId,i){
+  var k=dayId+"_"+exId+"_"+i;
+  checkedSets[k]=!checkedSets[k];
+  saveAll();
+  render();
+}
+
+function allChecked(dayId,exId,numSets){
+  for(var i=0;i<numSets;i++){
+    if(!isChecked(dayId,exId,i))return false;
+  }
+  return true;
+}
+
+function toggleCollapse(dayId,exId){
+  var k=dayId+"_"+exId;
+  collapsed[k]=!collapsed[k];
+  render();
+}
+
+function isCollapsed(dayId,exId){
+  return collapsed[dayId+"_"+exId]===true;
 }
 
 function setNote(exId,val){
@@ -215,7 +253,12 @@ function finish(dayId){
   historyData.unshift(entry);
   if(historyData.length>100)historyData=historyData.slice(0,100);
   for(var i=0;i<day.exercises.length;i++){
-    delete workoutData[dayId+"_"+day.exercises[i].id];
+    var ek=dayId+"_"+day.exercises[i].id;
+    delete workoutData[ek];
+    for(var j=0;j<day.exercises[i].sets;j++){
+      delete checkedSets[ek+"_"+j];
+    }
+    delete collapsed[ek];
   }
   saveAll();
   stopT();
@@ -305,6 +348,8 @@ function renderWO(app){
   for(var i=0;i<day.exercises.length;i++){
     var ex=day.exercises[i];
     var pc=ex.pairLabel?"p"+ex.pairLabel:"";
+    var allDone=allChecked(day.id,ex.id,ex.sets);
+    var doneClass=allDone?" done":"";
     var badge=ex.pairLabel?'<span class="pbg '+ex.pairLabel+'">'+ex.pairLabel.toUpperCase()+'</span>':"";
     var last=getLastPerf(ex.id);
     var prevHtml="";
@@ -325,12 +370,32 @@ function renderWO(app){
     }else{
       noteHtml='<div class="nr"><button class="nt" onclick="toggleN(\''+ex.id+'\')">+ note</button></div>';
     }
-    var sets="";
-    for(var j=0;j<ex.sets;j++){
-      var sd=getSet(day.id,ex.id,j);
-      sets+='<div class="sr"><span class="sn">'+(j+1)+'</span><input class="si" type="number" inputmode="decimal" placeholder="kg" value="'+sd.weight+'" onchange="setSet(\''+day.id+"','"+ex.id+"',"+j+",'weight',this.value)\"><span class=\"ss\">\u00d7</span><input class=\"si\" type=\"number\" inputmode=\"numeric\" placeholder=\"reps\" value=\""+sd.reps+"\" onchange=\"setSet('"+day.id+"','"+ex.id+"',"+j+",'reps',this.value)\"></div>";
+
+    var setsHtml="";
+    var coll=isCollapsed(day.id,ex.id);
+
+    if(allDone&&coll){
+      var sumParts=[];
+      for(var j=0;j<ex.sets;j++){
+        var sd=getSet(day.id,ex.id,j);
+        if(sd.weight||sd.reps){
+          sumParts.push(sd.weight+"kg \u00d7 "+sd.reps);
+        }
+      }
+      setsHtml='<div class="summary" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">"+"\u2705 "+sumParts.join("  |  ")+'<span class="arrow">\u25BC</span></div>';
+    }else{
+      for(var j=0;j<ex.sets;j++){
+        var sd=getSet(day.id,ex.id,j);
+        var chk=isChecked(day.id,ex.id,j);
+        var rowClass=chk?"sr checked":"sr";
+        setsHtml+='<div class="'+rowClass+'"><span class="sn">'+(j+1)+'</span><input class="si" type="number" inputmode="decimal" placeholder="kg" value="'+sd.weight+'" onchange="setSet(\''+day.id+"','"+ex.id+"',"+j+",'weight',this.value)\"><span class=\"ss\">\u00d7</span><input class=\"si\" type=\"number\" inputmode=\"numeric\" placeholder=\"reps\" value=\""+sd.reps+"\" onchange=\"setSet('"+day.id+"','"+ex.id+"',"+j+",'reps',this.value)\"><input type=\"checkbox\" class=\"cb\""+(chk?" checked":"")+" onchange=\"toggleCheck('"+day.id+"','"+ex.id+"',"+j+")\"></div>";
+      }
+      if(allDone){
+        setsHtml+='<div class="summary" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">Collapse<span class=\"arrow\">\u25B2</span></div>";
+      }
     }
-    h+='<div class="ec '+pc+'"><div class="enr">'+badge+'<span class="en">'+ex.name+'</span></div>'+prevHtml+noteHtml+sets+'</div>';
+
+    h+='<div class="ec '+pc+doneClass+'"><div class="enr">'+badge+'<span class="en">'+ex.name+'</span></div>'+prevHtml+noteHtml+setsHtml+'</div>';
   }
 
   h+='<div class="bar"><div class="tbs"><button class="tbtn" onclick="startT(60)">1:00</button><button class="tbtn" onclick="startT(90)">1:30</button><button class="tbtn" onclick="startT(120)">2:00</button><button class="tbtn" onclick="startT(180)">3:00</button></div><button class="fb" onclick="finish(\''+day.id+'\')">Finish Workout</button></div>';
