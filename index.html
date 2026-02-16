@@ -8,10 +8,14 @@
 <title>Training Log</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:#111;min-height:100vh;max-width:480px;margin:0 auto;padding:16px;padding-bottom:160px}
+body{font-family:-apple-system,Helvetica,Arial,sans-serif;background:#fff;color:#111;min-height:100vh;max-width:480px;margin:0 auto;padding:0;padding-bottom:80px}
 input[type=number]{-moz-appearance:textfield}
 input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
-.hh{text-align:center;padding:24px 0 20px;border-bottom:1px solid #ccc;margin-bottom:24px}
+.tabs{display:flex;border-bottom:2px solid #ccc;position:sticky;top:0;background:#fff;z-index:10}
+.tab{flex:1;text-align:center;padding:14px 0;font-size:14px;font-weight:700;color:#999;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;letter-spacing:1px}
+.tab.active{color:#111;border-bottom-color:#111}
+.page{padding:16px;padding-bottom:160px}
+.hh{text-align:center;padding:20px 0 16px;border-bottom:1px solid #ccc;margin-bottom:24px}
 .ht{font-size:26px;font-weight:800;letter-spacing:6px;color:#000}
 .hs{font-size:11px;letter-spacing:5px;color:#777;margin-top:4px}
 .hd{font-size:13px;color:#777;margin-top:12px}
@@ -39,7 +43,6 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .ec.done{background:#e8f5e8;border-color:#80b880;border-left-color:#1a6b1a}
 .ec.collapsed{padding:8px 12px;margin-bottom:6px}
 .enr{display:flex;align-items:center;gap:8px;margin-bottom:4px}
-.enr.compact{margin-bottom:0}
 .pbg{font-size:10px;font-weight:800;padding:2px 6px;border-radius:3px;letter-spacing:1px;display:inline-block}
 .pbg.a{background:#c0dcc0;color:#1a6b1a}
 .pbg.b{background:#c0c0dc;color:#1a1a6b}
@@ -81,9 +84,31 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .hst{font-size:12px;color:#555;background:#e8e8e8;padding:2px 6px;border-radius:3px}
 .et{text-align:center;color:#999;font-size:14px;padding:40px}
 .hidden{display:none}
+.bodymap{position:relative;width:100%;max-width:320px;margin:0 auto}
+.bodymap svg{width:100%;height:auto}
+.mfield{position:absolute;display:flex;flex-direction:column;align-items:center}
+.mfield label{font-size:10px;color:#555;font-weight:600;letter-spacing:0.5px;margin-bottom:2px;white-space:nowrap}
+.mfield input{width:56px;background:#fff;border:1px solid #bbb;border-radius:4px;color:#111;font-size:14px;padding:6px 4px;text-align:center;font-family:inherit;outline:none}
+.mfield input:focus{border-color:#1a6b1a}
+.mline{position:absolute;pointer-events:none}
+.savebar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ccc;padding:12px 16px;max-width:480px;margin:0 auto}
+.savebtn{background:#e0f0e0;border:1px solid #80b880;border-radius:8px;color:#1a6b1a;font-size:14px;font-weight:700;padding:14px;width:100%;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase}
+.expbtn{background:#fff;border:1px solid #bbb;border-radius:8px;color:#666;font-size:12px;font-weight:600;padding:10px;width:100%;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase;margin-top:8px}
+.mhist{margin-top:20px}
+.mhrow{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #eee;font-size:12px;color:#555}
+.mhrow.mhhead{font-weight:700;color:#333;border-bottom:2px solid #ccc}
+.mhcell{flex:1;text-align:center}
+.mhcell:first-child{text-align:left}
+.toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1a6b1a;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;z-index:100;opacity:0;transition:opacity 0.3s}
+.toast.show{opacity:1}
 </style>
 </head>
 <body>
+<div id="toast" class="toast"></div>
+<div class="tabs">
+  <div class="tab active" id="tab-rt" onclick="switchTab('rt')">RT Training</div>
+  <div class="tab" id="tab-meas" onclick="switchTab('meas')">Measurements</div>
+</div>
 <div id="app"></div>
 <script>
 var PROGRAM = [
@@ -114,13 +139,24 @@ var PROGRAM = [
   ]}
 ];
 
+var MEAS_FIELDS = [
+  {id:"chest",label:"Chest"},
+  {id:"bicep_l",label:"Bicep L"},
+  {id:"bicep_r",label:"Bicep R"},
+  {id:"buttocks",label:"Buttocks"},
+  {id:"quad_l",label:"Quad L"},
+  {id:"quad_r",label:"Quad R"}
+];
+
 var workoutData={};
 var historyData=[];
 var notesData={};
 var checkedSets={};
 var collapsed={};
+var measHistory=[];
 var currentView="home";
 var currentDay=null;
+var currentTab="rt";
 var timerInt=null;
 var timerSec=0;
 var openNotes={};
@@ -130,6 +166,7 @@ function loadStorage(){
   try{historyData=JSON.parse(localStorage.getItem("ht-history"))||[];}catch(e){historyData=[];}
   try{notesData=JSON.parse(localStorage.getItem("ht-notes"))||{};}catch(e){notesData={};}
   try{checkedSets=JSON.parse(localStorage.getItem("ht-checked"))||{};}catch(e){checkedSets={};}
+  try{measHistory=JSON.parse(localStorage.getItem("ht-meas"))||[];}catch(e){measHistory=[];}
 }
 
 function saveAll(){
@@ -138,6 +175,7 @@ function saveAll(){
     localStorage.setItem("ht-history",JSON.stringify(historyData));
     localStorage.setItem("ht-notes",JSON.stringify(notesData));
     localStorage.setItem("ht-checked",JSON.stringify(checkedSets));
+    localStorage.setItem("ht-meas",JSON.stringify(measHistory));
   }catch(e){}
 }
 
@@ -147,9 +185,33 @@ function fmtDate(d){
   return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()]+" "+d.getFullYear();
 }
 
+function isoDate(d){
+  var y=d.getFullYear();
+  var m=d.getMonth()+1;if(m<10)m="0"+m;
+  var day=d.getDate();if(day<10)day="0"+day;
+  return y+"-"+m+"-"+day;
+}
+
 function esc(s){
   if(!s)return"";
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+}
+
+function showToast(msg){
+  var t=document.getElementById("toast");
+  t.textContent=msg;
+  t.className="toast show";
+  setTimeout(function(){t.className="toast";},2000);
+}
+
+function switchTab(tab){
+  currentTab=tab;
+  document.getElementById("tab-rt").className=tab==="rt"?"tab active":"tab";
+  document.getElementById("tab-meas").className=tab==="meas"?"tab active":"tab";
+  if(tab==="rt"){
+    currentView="home";currentDay=null;
+  }
+  render();
 }
 
 function getSet(dayId,exId,i){
@@ -326,15 +388,49 @@ function goDay(dayId){currentDay=dayId;currentView="workout";render();}
 function goHome(){currentView="home";currentDay=null;stopT();render();}
 function goHist(){currentView="history";render();}
 
+function saveMeas(){
+  var entry={date:isoDate(new Date())};
+  var hasData=false;
+  for(var i=0;i<MEAS_FIELDS.length;i++){
+    var el=document.getElementById("meas-"+MEAS_FIELDS[i].id);
+    var val=el?el.value.trim():"";
+    entry[MEAS_FIELDS[i].id]=val;
+    if(val)hasData=true;
+  }
+  if(!hasData){alert("Enter at least one measurement.");return;}
+  measHistory.unshift(entry);
+  if(measHistory.length>200)measHistory=measHistory.slice(0,200);
+  saveAll();
+  showToast("Measurements saved!");
+  render();
+}
+
+function exportMeasCSV(){
+  var header="Date,Chest,Bicep L,Bicep R,Buttocks,Quad L,Quad R\n";
+  var rows="";
+  for(var i=0;i<measHistory.length;i++){
+    var e=measHistory[i];
+    rows+=e.date+","+(e.chest||"")+","+(e.bicep_l||"")+","+(e.bicep_r||"")+","+(e.buttocks||"")+","+(e.quad_l||"")+","+(e.quad_r||"")+"\n";
+  }
+  var blob=new Blob([header+rows],{type:"text/csv"});
+  var url=URL.createObjectURL(blob);
+  var a=document.createElement("a");
+  a.href=url;
+  a.download="measurements.csv";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function render(){
   var app=document.getElementById("app");
+  if(currentTab==="meas"){renderMeas(app);return;}
   if(currentView==="home")renderHome(app);
   else if(currentView==="workout")renderWO(app);
   else if(currentView==="history")renderHist(app);
 }
 
 function renderHome(app){
-  var h='<div class="hh"><div class="ht">HELGE</div><div class="hs">TRAINING LOG</div><div class="hd">'+fmtDate(new Date())+'</div></div>';
+  var h='<div class="page"><div class="hh"><div class="ht">HELGE</div><div class="hs">TRAINING LOG</div><div class="hd">'+fmtDate(new Date())+'</div></div>';
   for(var d=0;d<PROGRAM.length;d++){
     var day=PROGRAM[d];
     var hasData=false;
@@ -358,7 +454,7 @@ function renderHome(app){
     var ldLine=ld?'<div class="lwd">Last: '+ld+'</div>':"";
     h+='<div class="dc" onclick="goDay(\''+day.id+'\')"><div class="dch"><span class="dcn">'+day.name+'</span><span class="dcl">'+day.dayLabel+'</span></div>'+exList+pairLine+prog+ldLine+'</div>';
   }
-  h+='<div class="hb" onclick="goHist()">View History</div>';
+  h+='<div class="hb" onclick="goHist()">View History</div></div>';
   app.innerHTML=h;
 }
 
@@ -366,7 +462,7 @@ function renderWO(app){
   var day=null;
   for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===currentDay)day=PROGRAM[i];}
   var today=fmtDate(new Date());
-  var h='<div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">'+day.name+' <span class="dt">'+day.dayLabel+'</span></div><div class="wd">'+today+'</div></div>';
+  var h='<div class="page"><div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">'+day.name+' <span class="dt">'+day.dayLabel+'</span></div><div class="wd">'+today+'</div></div>';
   h+='<div id="tbar" class="tb hidden"><span class="tt"></span><button class="tc" onclick="stopT()">\u2715</button></div>';
 
   for(var i=0;i<day.exercises.length;i++){
@@ -429,12 +525,12 @@ function renderWO(app){
     h+='<div class="ec '+pc+doneClass+'"><div class="enr">'+badge+'<span class="en">'+ex.name+'</span></div>'+prevHtml+noteHtml+setsHtml+'</div>';
   }
 
-  h+='<div class="bar"><div class="tbs"><button class="tbtn" onclick="startT(60)">1:00</button><button class="tbtn" onclick="startT(90)">1:30</button><button class="tbtn" onclick="startT(120)">2:00</button><button class="tbtn" onclick="startT(180)">3:00</button></div><div class="brow"><button class="fb" onclick="finish(\''+day.id+'\')">Finish Workout</button><button class="db" onclick="delWorkout(\''+day.id+'\')">Del</button></div></div>';
+  h+='<div class="bar"><div class="tbs"><button class="tbtn" onclick="startT(60)">1:00</button><button class="tbtn" onclick="startT(90)">1:30</button><button class="tbtn" onclick="startT(120)">2:00</button><button class="tbtn" onclick="startT(180)">3:00</button></div><div class="brow"><button class="fb" onclick="finish(\''+day.id+'\')">Finish Workout</button><button class="db" onclick="delWorkout(\''+day.id+'\')">Del</button></div></div></div>';
   app.innerHTML=h;
 }
 
 function renderHist(app){
-  var h='<div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">History</div></div>';
+  var h='<div class="page"><div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">History</div></div>';
   if(!historyData.length){
     h+='<div class="et">No workouts logged yet</div>';
   }else{
@@ -453,6 +549,99 @@ function renderHist(app){
       h+='<div class="hc"><div class="hch"><span class="hcdn">'+entry.dayName+'</span><span class="hcdt">'+entry.date+'</span></div>'+exHtml+'</div>';
     }
   }
+  h+='</div>';
+  app.innerHTML=h;
+}
+
+function renderMeas(app){
+  var lastEntry=measHistory.length?measHistory[0]:{};
+  var h='<div class="page">';
+  h+='<div style="text-align:center;margin-bottom:8px"><div style="font-size:18px;font-weight:700;color:#000">Body Measurements</div><div style="font-size:12px;color:#777;margin-top:4px">'+fmtDate(new Date())+' \u2022 cm</div></div>';
+
+  h+='<div class="bodymap" style="height:460px">';
+
+  // SVG male back outline
+  h+='<svg viewBox="0 0 200 400" style="position:absolute;left:50%;transform:translateX(-50%);width:180px;height:360px;top:20px">';
+  // Head
+  h+='<ellipse cx="100" cy="28" rx="18" ry="22" fill="none" stroke="#ccc" stroke-width="1.5"/>';
+  // Neck
+  h+='<line x1="92" y1="50" x2="92" y2="62" stroke="#ccc" stroke-width="1.5"/>';
+  h+='<line x1="108" y1="50" x2="108" y2="62" stroke="#ccc" stroke-width="1.5"/>';
+  // Shoulders & torso
+  h+='<path d="M92,62 L60,75 L48,95 L45,140 L50,175 L55,190 L65,195 L80,190 L90,185 L100,183 L110,185 L120,190 L135,195 L145,190 L150,175 L155,140 L152,95 L140,75 L108,62" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  // Spine line
+  h+='<line x1="100" y1="62" x2="100" y2="183" stroke="#ddd" stroke-width="0.8" stroke-dasharray="3,3"/>';
+  // Glutes
+  h+='<path d="M80,190 Q75,210 78,225 Q85,235 100,235 Q115,235 122,225 Q125,210 120,190" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  h+='<line x1="100" y1="190" x2="100" y2="235" stroke="#ddd" stroke-width="0.8" stroke-dasharray="3,3"/>';
+  // Left leg
+  h+='<path d="M78,225 Q72,260 70,295 Q69,320 72,350 Q74,370 78,385" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  h+='<path d="M100,235 Q95,260 92,295 Q91,320 90,350 Q89,370 88,385" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  // Right leg
+  h+='<path d="M122,225 Q128,260 130,295 Q131,320 128,350 Q126,370 122,385" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  h+='<path d="M100,235 Q105,260 108,295 Q109,320 110,350 Q111,370 112,385" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  // Left arm
+  h+='<path d="M48,95 Q38,120 35,145 Q33,165 36,185 Q38,200 40,210" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  h+='<path d="M60,75 Q55,95 52,120 Q50,140 52,160 Q54,180 55,195" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  // Right arm
+  h+='<path d="M152,95 Q162,120 165,145 Q167,165 164,185 Q162,200 160,210" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  h+='<path d="M140,75 Q145,95 148,120 Q150,140 148,160 Q146,180 145,195" fill="none" stroke="#bbb" stroke-width="1.5"/>';
+  h+='</svg>';
+
+  // Measurement fields positioned around the body
+  // Chest - top center
+  h+='<div class="mfield" style="top:95px;left:50%;transform:translateX(-50%)">';
+  h+='<label>Chest</label>';
+  h+='<input type="number" inputmode="decimal" id="meas-chest" placeholder="-" value="'+(lastEntry.chest||"")+'">';
+  h+='</div>';
+
+  // Bicep L - left side
+  h+='<div class="mfield" style="top:130px;left:2px">';
+  h+='<label>Bicep L</label>';
+  h+='<input type="number" inputmode="decimal" id="meas-bicep_l" placeholder="-" value="'+(lastEntry.bicep_l||"")+'">';
+  h+='</div>';
+
+  // Bicep R - right side
+  h+='<div class="mfield" style="top:130px;right:2px">';
+  h+='<label>Bicep R</label>';
+  h+='<input type="number" inputmode="decimal" id="meas-bicep_r" placeholder="-" value="'+(lastEntry.bicep_r||"")+'">';
+  h+='</div>';
+
+  // Buttocks - center
+  h+='<div class="mfield" style="top:230px;left:50%;transform:translateX(-50%)">';
+  h+='<label>Buttocks</label>';
+  h+='<input type="number" inputmode="decimal" id="meas-buttocks" placeholder="-" value="'+(lastEntry.buttocks||"")+'">';
+  h+='</div>';
+
+  // Quad L - lower left
+  h+='<div class="mfield" style="top:330px;left:12px">';
+  h+='<label>Quad L</label>';
+  h+='<input type="number" inputmode="decimal" id="meas-quad_l" placeholder="-" value="'+(lastEntry.quad_l||"")+'">';
+  h+='</div>';
+
+  // Quad R - lower right
+  h+='<div class="mfield" style="top:330px;right:12px">';
+  h+='<label>Quad R</label>';
+  h+='<input type="number" inputmode="decimal" id="meas-quad_r" placeholder="-" value="'+(lastEntry.quad_r||"")+'">';
+  h+='</div>';
+
+  h+='</div>'; // end bodymap
+
+  // History table
+  if(measHistory.length){
+    h+='<div class="mhist">';
+    h+='<div style="font-size:14px;font-weight:700;color:#333;margin-bottom:8px">History</div>';
+    h+='<div style="overflow-x:auto"><div style="min-width:380px">';
+    h+='<div class="mhrow mhhead"><div class="mhcell">Date</div><div class="mhcell">Chest</div><div class="mhcell">Bi L</div><div class="mhcell">Bi R</div><div class="mhcell">Butt</div><div class="mhcell">Qu L</div><div class="mhcell">Qu R</div></div>';
+    for(var i=0;i<measHistory.length&&i<20;i++){
+      var e=measHistory[i];
+      h+='<div class="mhrow"><div class="mhcell">'+e.date+'</div><div class="mhcell">'+(e.chest||"-")+'</div><div class="mhcell">'+(e.bicep_l||"-")+'</div><div class="mhcell">'+(e.bicep_r||"-")+'</div><div class="mhcell">'+(e.buttocks||"-")+'</div><div class="mhcell">'+(e.quad_l||"-")+'</div><div class="mhcell">'+(e.quad_r||"-")+'</div></div>';
+    }
+    h+='</div></div></div>';
+  }
+
+  h+='<div class="savebar"><button class="savebtn" onclick="saveMeas()">Save Measurements</button><button class="expbtn" onclick="exportMeasCSV()">Export CSV</button></div>';
+  h+='</div>';
   app.innerHTML=h;
 }
 
