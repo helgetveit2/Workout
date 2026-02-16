@@ -84,13 +84,11 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .hst{font-size:12px;color:#555;background:#e8e8e8;padding:2px 6px;border-radius:3px}
 .et{text-align:center;color:#999;font-size:14px;padding:40px}
 .hidden{display:none}
-.bodymap{position:relative;width:100%;max-width:320px;margin:0 auto}
-.bodymap svg{width:100%;height:auto}
+.bodymap{position:relative;width:100%;max-width:360px;margin:0 auto;height:500px}
 .mfield{position:absolute;display:flex;flex-direction:column;align-items:center}
-.mfield label{font-size:10px;color:#555;font-weight:600;letter-spacing:0.5px;margin-bottom:2px;white-space:nowrap}
-.mfield input{width:56px;background:#fff;border:1px solid #bbb;border-radius:4px;color:#111;font-size:14px;padding:6px 4px;text-align:center;font-family:inherit;outline:none}
+.mfield label{font-size:10px;color:#555;font-weight:700;letter-spacing:0.5px;margin-bottom:2px;white-space:nowrap}
+.mfield input{width:54px;background:#fff;border:1px solid #bbb;border-radius:4px;color:#111;font-size:14px;padding:5px 4px;text-align:center;font-family:inherit;outline:none}
 .mfield input:focus{border-color:#1a6b1a}
-.mline{position:absolute;pointer-events:none}
 .savebar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid #ccc;padding:12px 16px;max-width:480px;margin:0 auto}
 .savebtn{background:#e0f0e0;border:1px solid #80b880;border-radius:8px;color:#1a6b1a;font-size:14px;font-weight:700;padding:14px;width:100%;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase}
 .expbtn{background:#fff;border:1px solid #bbb;border-radius:8px;color:#666;font-size:12px;font-weight:600;padding:10px;width:100%;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase;margin-top:8px}
@@ -138,28 +136,9 @@ var PROGRAM = [
     {id:"plank",name:"Plank",sets:3,pairLabel:null}
   ]}
 ];
-
-var MEAS_FIELDS = [
-  {id:"chest",label:"Chest"},
-  {id:"bicep_l",label:"Bicep L"},
-  {id:"bicep_r",label:"Bicep R"},
-  {id:"buttocks",label:"Buttocks"},
-  {id:"quad_l",label:"Quad L"},
-  {id:"quad_r",label:"Quad R"}
-];
-
-var workoutData={};
-var historyData=[];
-var notesData={};
-var checkedSets={};
-var collapsed={};
-var measHistory=[];
-var currentView="home";
-var currentDay=null;
-var currentTab="rt";
-var timerInt=null;
-var timerSec=0;
-var openNotes={};
+var MEAS_FIELDS=[{id:"chest",label:"Chest"},{id:"bicep_l",label:"Bicep L"},{id:"bicep_r",label:"Bicep R"},{id:"buttocks",label:"Buttocks"},{id:"quad_l",label:"Quad L"},{id:"quad_r",label:"Quad R"}];
+var workoutData={};var historyData=[];var notesData={};var checkedSets={};var collapsed={};var measHistory=[];
+var currentView="home";var currentDay=null;var currentTab="rt";var timerInt=null;var timerSec=0;var openNotes={};
 
 function loadStorage(){
   try{workoutData=JSON.parse(localStorage.getItem("ht-data"))||{};}catch(e){workoutData={};}
@@ -168,485 +147,144 @@ function loadStorage(){
   try{checkedSets=JSON.parse(localStorage.getItem("ht-checked"))||{};}catch(e){checkedSets={};}
   try{measHistory=JSON.parse(localStorage.getItem("ht-meas"))||[];}catch(e){measHistory=[];}
 }
-
 function saveAll(){
-  try{
-    localStorage.setItem("ht-data",JSON.stringify(workoutData));
-    localStorage.setItem("ht-history",JSON.stringify(historyData));
-    localStorage.setItem("ht-notes",JSON.stringify(notesData));
-    localStorage.setItem("ht-checked",JSON.stringify(checkedSets));
-    localStorage.setItem("ht-meas",JSON.stringify(measHistory));
-  }catch(e){}
+  try{localStorage.setItem("ht-data",JSON.stringify(workoutData));localStorage.setItem("ht-history",JSON.stringify(historyData));localStorage.setItem("ht-notes",JSON.stringify(notesData));localStorage.setItem("ht-checked",JSON.stringify(checkedSets));localStorage.setItem("ht-meas",JSON.stringify(measHistory));}catch(e){}
 }
-
-function fmtDate(d){
-  var days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
-  var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()]+" "+d.getFullYear();
-}
-
-function isoDate(d){
-  var y=d.getFullYear();
-  var m=d.getMonth()+1;if(m<10)m="0"+m;
-  var day=d.getDate();if(day<10)day="0"+day;
-  return y+"-"+m+"-"+day;
-}
-
-function esc(s){
-  if(!s)return"";
-  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
-}
-
-function showToast(msg){
-  var t=document.getElementById("toast");
-  t.textContent=msg;
-  t.className="toast show";
-  setTimeout(function(){t.className="toast";},2000);
-}
-
-function switchTab(tab){
-  currentTab=tab;
-  document.getElementById("tab-rt").className=tab==="rt"?"tab active":"tab";
-  document.getElementById("tab-meas").className=tab==="meas"?"tab active":"tab";
-  if(tab==="rt"){
-    currentView="home";currentDay=null;
-  }
-  render();
-}
-
-function getSet(dayId,exId,i){
-  var k=dayId+"_"+exId;
-  if(workoutData[k]&&workoutData[k][i])return workoutData[k][i];
-  return{weight:"",reps:""};
-}
-
-function setSet(dayId,exId,i,field,val){
-  var k=dayId+"_"+exId;
-  if(!workoutData[k])workoutData[k]=[];
-  if(!workoutData[k][i])workoutData[k][i]={weight:"",reps:""};
-  workoutData[k][i][field]=val;
-  saveAll();
-}
-
-function isChecked(dayId,exId,i){
-  var k=dayId+"_"+exId+"_"+i;
-  return checkedSets[k]===true;
-}
-
-function toggleCheck(dayId,exId,i){
-  var k=dayId+"_"+exId+"_"+i;
-  checkedSets[k]=!checkedSets[k];
-  saveAll();
-  render();
-}
-
-function allChecked(dayId,exId,numSets){
-  for(var i=0;i<numSets;i++){
-    if(!isChecked(dayId,exId,i))return false;
-  }
-  return true;
-}
-
-function toggleCollapse(dayId,exId){
-  var k=dayId+"_"+exId;
-  collapsed[k]=!collapsed[k];
-  render();
-}
-
-function isCollapsed(dayId,exId){
-  return collapsed[dayId+"_"+exId]===true;
-}
-
-function setNote(exId,val){
-  notesData[exId]=val;
-  saveAll();
-}
-
-function toggleN(exId){
-  openNotes[exId]=!openNotes[exId];
-  render();
-  if(openNotes[exId]){
-    setTimeout(function(){
-      var el=document.getElementById("note-"+exId);
-      if(el)el.focus();
-    },100);
-  }
-}
-
-function closeN(exId){
-  var el=document.getElementById("note-"+exId);
-  if(el)setNote(exId,el.value);
-  openNotes[exId]=false;
-  render();
-}
-
-function getLastPerf(exId){
-  var base=exId.replace(/_\d+$/,"");
-  for(var i=0;i<historyData.length;i++){
-    var e=historyData[i];
-    var keys=Object.keys(e.exercises);
-    for(var j=0;j<keys.length;j++){
-      var k=keys[j];
-      if(k===exId||k.replace(/_\d+$/,"")===base){
-        return{date:e.date,sets:e.exercises[k].sets};
-      }
-    }
-  }
-  return null;
-}
-
-function getLastDate(dayId){
-  for(var i=0;i<historyData.length;i++){
-    if(historyData[i].dayId===dayId)return historyData[i].date;
-  }
-  return null;
-}
-
+function fmtDate(d){var days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()]+" "+d.getFullYear();}
+function isoDate(d){var y=d.getFullYear();var m=d.getMonth()+1;if(m<10)m="0"+m;var day=d.getDate();if(day<10)day="0"+day;return y+"-"+m+"-"+day;}
+function esc(s){if(!s)return"";return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
+function showToast(msg){var t=document.getElementById("toast");t.textContent=msg;t.className="toast show";setTimeout(function(){t.className="toast";},2000);}
+function switchTab(tab){currentTab=tab;document.getElementById("tab-rt").className=tab==="rt"?"tab active":"tab";document.getElementById("tab-meas").className=tab==="meas"?"tab active":"tab";if(tab==="rt"){currentView="home";currentDay=null;}render();}
+function getSet(dayId,exId,i){var k=dayId+"_"+exId;if(workoutData[k]&&workoutData[k][i])return workoutData[k][i];return{weight:"",reps:""};}
+function setSet(dayId,exId,i,field,val){var k=dayId+"_"+exId;if(!workoutData[k])workoutData[k]=[];if(!workoutData[k][i])workoutData[k][i]={weight:"",reps:""};workoutData[k][i][field]=val;saveAll();}
+function isChecked(dayId,exId,i){return checkedSets[dayId+"_"+exId+"_"+i]===true;}
+function toggleCheck(dayId,exId,i){var k=dayId+"_"+exId+"_"+i;checkedSets[k]=!checkedSets[k];saveAll();render();}
+function allChecked(dayId,exId,n){for(var i=0;i<n;i++){if(!isChecked(dayId,exId,i))return false;}return true;}
+function toggleCollapse(dayId,exId){collapsed[dayId+"_"+exId]=!collapsed[dayId+"_"+exId];render();}
+function isCollapsed(dayId,exId){return collapsed[dayId+"_"+exId]===true;}
+function setNote(exId,val){notesData[exId]=val;saveAll();}
+function toggleN(exId){openNotes[exId]=!openNotes[exId];render();if(openNotes[exId]){setTimeout(function(){var el=document.getElementById("note-"+exId);if(el)el.focus();},100);}}
+function closeN(exId){var el=document.getElementById("note-"+exId);if(el)setNote(exId,el.value);openNotes[exId]=false;render();}
+function getLastPerf(exId){var base=exId.replace(/_\d+$/,"");for(var i=0;i<historyData.length;i++){var e=historyData[i];var keys=Object.keys(e.exercises);for(var j=0;j<keys.length;j++){var k=keys[j];if(k===exId||k.replace(/_\d+$/,"")===base){return{date:e.date,sets:e.exercises[k].sets};}}}return null;}
+function getLastDate(dayId){for(var i=0;i<historyData.length;i++){if(historyData[i].dayId===dayId)return historyData[i].date;}return null;}
 function finish(dayId){
-  var day=null;
-  for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===dayId)day=PROGRAM[i];}
+  var day=null;for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===dayId)day=PROGRAM[i];}
   var entry={date:fmtDate(new Date()),dayId:dayId,dayName:day.name,exercises:{}};
-  for(var i=0;i<day.exercises.length;i++){
-    var ex=day.exercises[i];
-    var k=dayId+"_"+ex.id;
-    if(workoutData[k]){
-      var filled=[];
-      for(var j=0;j<workoutData[k].length;j++){
-        var s=workoutData[k][j];
-        if(s&&(s.weight||s.reps))filled.push(s);
-      }
-      if(filled.length)entry.exercises[ex.id]={name:ex.name,sets:filled};
-    }
-  }
-  historyData.unshift(entry);
-  if(historyData.length>100)historyData=historyData.slice(0,100);
-  for(var i=0;i<day.exercises.length;i++){
-    var ek=dayId+"_"+day.exercises[i].id;
-    delete workoutData[ek];
-    for(var j=0;j<day.exercises[i].sets;j++){
-      delete checkedSets[ek+"_"+j];
-    }
-    delete collapsed[ek];
-  }
-  saveAll();
-  stopT();
-  currentView="home";currentDay=null;
-  render();
+  for(var i=0;i<day.exercises.length;i++){var ex=day.exercises[i];var k=dayId+"_"+ex.id;if(workoutData[k]){var filled=[];for(var j=0;j<workoutData[k].length;j++){var s=workoutData[k][j];if(s&&(s.weight||s.reps))filled.push(s);}if(filled.length)entry.exercises[ex.id]={name:ex.name,sets:filled};}}
+  historyData.unshift(entry);if(historyData.length>100)historyData=historyData.slice(0,100);
+  for(var i=0;i<day.exercises.length;i++){var ek=dayId+"_"+day.exercises[i].id;delete workoutData[ek];for(var j=0;j<day.exercises[i].sets;j++){delete checkedSets[ek+"_"+j];}delete collapsed[ek];}
+  saveAll();stopT();currentView="home";currentDay=null;render();
 }
-
 function delWorkout(dayId){
   if(!confirm("Delete current workout data?"))return;
-  var day=null;
-  for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===dayId)day=PROGRAM[i];}
-  for(var i=0;i<day.exercises.length;i++){
-    var ek=dayId+"_"+day.exercises[i].id;
-    delete workoutData[ek];
-    for(var j=0;j<day.exercises[i].sets;j++){
-      delete checkedSets[ek+"_"+j];
-    }
-    delete collapsed[ek];
-  }
-  saveAll();
-  stopT();
-  currentView="home";currentDay=null;
-  render();
+  var day=null;for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===dayId)day=PROGRAM[i];}
+  for(var i=0;i<day.exercises.length;i++){var ek=dayId+"_"+day.exercises[i].id;delete workoutData[ek];for(var j=0;j<day.exercises[i].sets;j++){delete checkedSets[ek+"_"+j];}delete collapsed[ek];}
+  saveAll();stopT();currentView="home";currentDay=null;render();
 }
-
-function startT(secs){
-  stopT();
-  timerSec=secs;
-  renderT();
-  timerInt=setInterval(function(){
-    timerSec--;
-    if(timerSec<=0)stopT();
-    renderT();
-  },1000);
-}
-
-function stopT(){
-  if(timerInt){clearInterval(timerInt);timerInt=null;}
-  timerSec=0;
-  var el=document.getElementById("tbar");
-  if(el)el.className="tb hidden";
-}
-
-function renderT(){
-  var el=document.getElementById("tbar");
-  if(!el)return;
-  if(timerSec>0){
-    el.className="tb";
-    var m=Math.floor(timerSec/60);
-    var s=timerSec%60;
-    if(s<10)s="0"+s;
-    el.querySelector(".tt").textContent="Rest: "+m+":"+s;
-  }else{
-    el.className="tb hidden";
-  }
-}
-
+function startT(secs){stopT();timerSec=secs;renderT();timerInt=setInterval(function(){timerSec--;if(timerSec<=0)stopT();renderT();},1000);}
+function stopT(){if(timerInt){clearInterval(timerInt);timerInt=null;}timerSec=0;var el=document.getElementById("tbar");if(el)el.className="tb hidden";}
+function renderT(){var el=document.getElementById("tbar");if(!el)return;if(timerSec>0){el.className="tb";var m=Math.floor(timerSec/60);var s=timerSec%60;if(s<10)s="0"+s;el.querySelector(".tt").textContent="Rest: "+m+":"+s;}else{el.className="tb hidden";}}
 function goDay(dayId){currentDay=dayId;currentView="workout";render();}
 function goHome(){currentView="home";currentDay=null;stopT();render();}
 function goHist(){currentView="history";render();}
-
 function saveMeas(){
-  var entry={date:isoDate(new Date())};
-  var hasData=false;
-  for(var i=0;i<MEAS_FIELDS.length;i++){
-    var el=document.getElementById("meas-"+MEAS_FIELDS[i].id);
-    var val=el?el.value.trim():"";
-    entry[MEAS_FIELDS[i].id]=val;
-    if(val)hasData=true;
-  }
+  var entry={date:isoDate(new Date())};var hasData=false;
+  for(var i=0;i<MEAS_FIELDS.length;i++){var el=document.getElementById("meas-"+MEAS_FIELDS[i].id);var val=el?el.value.trim():"";entry[MEAS_FIELDS[i].id]=val;if(val)hasData=true;}
   if(!hasData){alert("Enter at least one measurement.");return;}
-  measHistory.unshift(entry);
-  if(measHistory.length>200)measHistory=measHistory.slice(0,200);
-  saveAll();
-  showToast("Measurements saved!");
-  render();
+  measHistory.unshift(entry);if(measHistory.length>200)measHistory=measHistory.slice(0,200);saveAll();showToast("Measurements saved!");render();
 }
-
 function exportMeasCSV(){
-  var header="Date,Chest,Bicep L,Bicep R,Buttocks,Quad L,Quad R\n";
-  var rows="";
-  for(var i=0;i<measHistory.length;i++){
-    var e=measHistory[i];
-    rows+=e.date+","+(e.chest||"")+","+(e.bicep_l||"")+","+(e.bicep_r||"")+","+(e.buttocks||"")+","+(e.quad_l||"")+","+(e.quad_r||"")+"\n";
-  }
-  var blob=new Blob([header+rows],{type:"text/csv"});
-  var url=URL.createObjectURL(blob);
-  var a=document.createElement("a");
-  a.href=url;
-  a.download="measurements.csv";
-  a.click();
-  URL.revokeObjectURL(url);
+  var header="Date,Chest,Bicep L,Bicep R,Buttocks,Quad L,Quad R\n";var rows="";
+  for(var i=0;i<measHistory.length;i++){var e=measHistory[i];rows+=e.date+","+(e.chest||"")+","+(e.bicep_l||"")+","+(e.bicep_r||"")+","+(e.buttocks||"")+","+(e.quad_l||"")+","+(e.quad_r||"")+"\n";}
+  var blob=new Blob([header+rows],{type:"text/csv"});var url=URL.createObjectURL(blob);var a=document.createElement("a");a.href=url;a.download="measurements.csv";a.click();URL.revokeObjectURL(url);
 }
-
 function render(){
   var app=document.getElementById("app");
   if(currentTab==="meas"){renderMeas(app);return;}
-  if(currentView==="home")renderHome(app);
-  else if(currentView==="workout")renderWO(app);
-  else if(currentView==="history")renderHist(app);
+  if(currentView==="home")renderHome(app);else if(currentView==="workout")renderWO(app);else if(currentView==="history")renderHist(app);
 }
-
 function renderHome(app){
   var h='<div class="page"><div class="hh"><div class="ht">HELGE</div><div class="hs">TRAINING LOG</div><div class="hd">'+fmtDate(new Date())+'</div></div>';
   for(var d=0;d<PROGRAM.length;d++){
-    var day=PROGRAM[d];
-    var hasData=false;
-    for(var i=0;i<day.exercises.length;i++){
-      if(workoutData[day.id+"_"+day.exercises[i].id]){hasData=true;break;}
-    }
-    var pairs={};
-    for(var i=0;i<day.exercises.length;i++){
-      if(day.exercises[i].pairLabel)pairs[day.exercises[i].pairLabel]=true;
-    }
-    var pairCount=Object.keys(pairs).length;
-    var exList="";
-    for(var i=0;i<day.exercises.length;i++){
-      var ex=day.exercises[i];
-      var icon=ex.pairLabel?'<span class="pi">\u2194</span>':"";
-      exList+='<div class="dce">'+icon+ex.name+'</div>';
-    }
+    var day=PROGRAM[d];var hasData=false;for(var i=0;i<day.exercises.length;i++){if(workoutData[day.id+"_"+day.exercises[i].id]){hasData=true;break;}}
+    var pairs={};for(var i=0;i<day.exercises.length;i++){if(day.exercises[i].pairLabel)pairs[day.exercises[i].pairLabel]=true;}var pairCount=Object.keys(pairs).length;
+    var exList="";for(var i=0;i<day.exercises.length;i++){var ex=day.exercises[i];var icon=ex.pairLabel?'<span class="pi">\u2194</span>':"";exList+='<div class="dce">'+icon+ex.name+'</div>';}
     var pairLine=pairCount?'<div class="pinfo">'+pairCount+" antagonist pair"+(pairCount>1?"s":"")+"</div>":"";
-    var prog=hasData?'<div class="inp">In progress</div>':"";
-    var ld=getLastDate(day.id);
-    var ldLine=ld?'<div class="lwd">Last: '+ld+'</div>':"";
+    var prog=hasData?'<div class="inp">In progress</div>':"";var ld=getLastDate(day.id);var ldLine=ld?'<div class="lwd">Last: '+ld+'</div>':"";
     h+='<div class="dc" onclick="goDay(\''+day.id+'\')"><div class="dch"><span class="dcn">'+day.name+'</span><span class="dcl">'+day.dayLabel+'</span></div>'+exList+pairLine+prog+ldLine+'</div>';
   }
-  h+='<div class="hb" onclick="goHist()">View History</div></div>';
-  app.innerHTML=h;
+  h+='<div class="hb" onclick="goHist()">View History</div></div>';app.innerHTML=h;
 }
-
 function renderWO(app){
-  var day=null;
-  for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===currentDay)day=PROGRAM[i];}
+  var day=null;for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===currentDay)day=PROGRAM[i];}
   var today=fmtDate(new Date());
   var h='<div class="page"><div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">'+day.name+' <span class="dt">'+day.dayLabel+'</span></div><div class="wd">'+today+'</div></div>';
   h+='<div id="tbar" class="tb hidden"><span class="tt"></span><button class="tc" onclick="stopT()">\u2715</button></div>';
-
   for(var i=0;i<day.exercises.length;i++){
-    var ex=day.exercises[i];
-    var pc=ex.pairLabel?"p"+ex.pairLabel:"";
-    var allDone=allChecked(day.id,ex.id,ex.sets);
-    var coll=isCollapsed(day.id,ex.id);
-
+    var ex=day.exercises[i];var pc=ex.pairLabel?"p"+ex.pairLabel:"";var allDone=allChecked(day.id,ex.id,ex.sets);var coll=isCollapsed(day.id,ex.id);
     if(allDone&&coll){
-      var sumParts=[];
-      for(var j=0;j<ex.sets;j++){
-        var sd=getSet(day.id,ex.id,j);
-        if(sd.weight||sd.reps){
-          sumParts.push(sd.weight+"\u00d7"+sd.reps);
-        }
-      }
+      var sumParts=[];for(var j=0;j<ex.sets;j++){var sd=getSet(day.id,ex.id,j);if(sd.weight||sd.reps){sumParts.push(sd.weight+"\u00d7"+sd.reps);}}
       var badge=ex.pairLabel?'<span class="pbg '+ex.pairLabel+'">'+ex.pairLabel.toUpperCase()+'</span>':"";
       h+='<div class="ec done collapsed '+pc+'" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">";
-      h+='<div class="cline">'+badge+'<span class="en">'+ex.name+'</span>';
-      for(var j=0;j<sumParts.length;j++){
-        h+='<span class="ctag">'+sumParts[j]+'</span>';
-      }
-      h+='<span class="carrow">\u25BC</span></div></div>';
-      continue;
+      h+='<div class="cline">'+badge+'<span class="en">'+ex.name+'</span>';for(var j=0;j<sumParts.length;j++){h+='<span class="ctag">'+sumParts[j]+'</span>';}
+      h+='<span class="carrow">\u25BC</span></div></div>';continue;
     }
-
-    var doneClass=allDone?" done":"";
-    var badge=ex.pairLabel?'<span class="pbg '+ex.pairLabel+'">'+ex.pairLabel.toUpperCase()+'</span>':"";
-    var last=getLastPerf(ex.id);
-    var prevHtml="";
-    if(last){
-      prevHtml='<div class="lp">Prev ('+last.date+'):</div><div class="ps">';
-      for(var j=0;j<last.sets.length;j++){
-        prevHtml+='<span class="pst">'+last.sets[j].weight+'kg \u00d7 '+last.sets[j].reps+'</span>';
-      }
-      prevHtml+='</div>';
-    }
-    var noteVal=notesData[ex.id]||"";
-    var isOpen=openNotes[ex.id];
-    var noteHtml="";
-    if(isOpen){
-      noteHtml='<div class="nr"><textarea id="note-'+ex.id+'" class="ni" placeholder="e.g. squeeze at top..." onblur="closeN(\''+ex.id+'\')">'+esc(noteVal)+'</textarea></div>';
-    }else if(noteVal){
-      noteHtml='<div class="nr"><div class="nd" onclick="toggleN(\''+ex.id+'\')">'+esc(noteVal)+'</div></div>';
-    }else{
-      noteHtml='<div class="nr"><button class="nt" onclick="toggleN(\''+ex.id+'\')">+ note</button></div>';
-    }
-
+    var doneClass=allDone?" done":"";var badge=ex.pairLabel?'<span class="pbg '+ex.pairLabel+'">'+ex.pairLabel.toUpperCase()+'</span>':"";
+    var last=getLastPerf(ex.id);var prevHtml="";
+    if(last){prevHtml='<div class="lp">Prev ('+last.date+'):</div><div class="ps">';for(var j=0;j<last.sets.length;j++){prevHtml+='<span class="pst">'+last.sets[j].weight+'kg \u00d7 '+last.sets[j].reps+'</span>';}prevHtml+='</div>';}
+    var noteVal=notesData[ex.id]||"";var isOpen=openNotes[ex.id];var noteHtml="";
+    if(isOpen){noteHtml='<div class="nr"><textarea id="note-'+ex.id+'" class="ni" placeholder="e.g. squeeze at top..." onblur="closeN(\''+ex.id+'\')">'+esc(noteVal)+'</textarea></div>';}
+    else if(noteVal){noteHtml='<div class="nr"><div class="nd" onclick="toggleN(\''+ex.id+'\')">'+esc(noteVal)+'</div></div>';}
+    else{noteHtml='<div class="nr"><button class="nt" onclick="toggleN(\''+ex.id+'\')">+ note</button></div>';}
     var setsHtml="";
-    for(var j=0;j<ex.sets;j++){
-      var sd=getSet(day.id,ex.id,j);
-      var chk=isChecked(day.id,ex.id,j);
-      var rowClass=chk?"sr checked":"sr";
-      setsHtml+='<div class="'+rowClass+'"><span class="sn">'+(j+1)+'</span><input class="si" type="number" inputmode="decimal" placeholder="kg" value="'+sd.weight+'" onchange="setSet(\''+day.id+"','"+ex.id+"',"+j+",'weight',this.value)\"><span class=\"ss\">\u00d7</span><input class=\"si\" type=\"number\" inputmode=\"numeric\" placeholder=\"reps\" value=\""+sd.reps+"\" onchange=\"setSet('"+day.id+"','"+ex.id+"',"+j+",'reps',this.value)\"><input type=\"checkbox\" class=\"cb\""+(chk?" checked":"")+" onchange=\"toggleCheck('"+day.id+"','"+ex.id+"',"+j+")\"></div>";
-    }
-    if(allDone){
-      setsHtml+='<div style="text-align:right;margin-top:4px"><button style="background:none;border:none;color:#1a6b1a;font-size:12px;cursor:pointer;font-family:inherit" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">Collapse \u25B2</button></div>";
-    }
-
+    for(var j=0;j<ex.sets;j++){var sd=getSet(day.id,ex.id,j);var chk=isChecked(day.id,ex.id,j);var rowClass=chk?"sr checked":"sr";
+      setsHtml+='<div class="'+rowClass+'"><span class="sn">'+(j+1)+'</span><input class="si" type="number" inputmode="decimal" placeholder="kg" value="'+sd.weight+'" onchange="setSet(\''+day.id+"','"+ex.id+"',"+j+",'weight',this.value)\"><span class=\"ss\">\u00d7</span><input class=\"si\" type=\"number\" inputmode=\"numeric\" placeholder=\"reps\" value=\""+sd.reps+"\" onchange=\"setSet('"+day.id+"','"+ex.id+"',"+j+",'reps',this.value)\"><input type=\"checkbox\" class=\"cb\""+(chk?" checked":"")+" onchange=\"toggleCheck('"+day.id+"','"+ex.id+"',"+j+")\"></div>";}
+    if(allDone){setsHtml+='<div style="text-align:right;margin-top:4px"><button style="background:none;border:none;color:#1a6b1a;font-size:12px;cursor:pointer;font-family:inherit" onclick="toggleCollapse(\''+day.id+"','"+ex.id+"')\">Collapse \u25B2</button></div>";}
     h+='<div class="ec '+pc+doneClass+'"><div class="enr">'+badge+'<span class="en">'+ex.name+'</span></div>'+prevHtml+noteHtml+setsHtml+'</div>';
   }
-
   h+='<div class="bar"><div class="tbs"><button class="tbtn" onclick="startT(60)">1:00</button><button class="tbtn" onclick="startT(90)">1:30</button><button class="tbtn" onclick="startT(120)">2:00</button><button class="tbtn" onclick="startT(180)">3:00</button></div><div class="brow"><button class="fb" onclick="finish(\''+day.id+'\')">Finish Workout</button><button class="db" onclick="delWorkout(\''+day.id+'\')">Del</button></div></div></div>';
   app.innerHTML=h;
 }
-
 function renderHist(app){
   var h='<div class="page"><div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">History</div></div>';
-  if(!historyData.length){
-    h+='<div class="et">No workouts logged yet</div>';
-  }else{
-    for(var i=0;i<historyData.length;i++){
-      var entry=historyData[i];
-      var exHtml="";
-      var keys=Object.keys(entry.exercises);
-      for(var j=0;j<keys.length;j++){
-        var ex=entry.exercises[keys[j]];
-        var sts="";
-        for(var k=0;k<ex.sets.length;k++){
-          sts+='<span class="hst">'+ex.sets[k].weight+'kg \u00d7 '+ex.sets[k].reps+'</span>';
-        }
-        exHtml+='<div class="he"><div class="hen">'+ex.name+'</div><div class="hss">'+sts+'</div></div>';
-      }
-      h+='<div class="hc"><div class="hch"><span class="hcdn">'+entry.dayName+'</span><span class="hcdt">'+entry.date+'</span></div>'+exHtml+'</div>';
-    }
-  }
-  h+='</div>';
-  app.innerHTML=h;
+  if(!historyData.length){h+='<div class="et">No workouts logged yet</div>';}
+  else{for(var i=0;i<historyData.length;i++){var entry=historyData[i];var exHtml="";var keys=Object.keys(entry.exercises);
+    for(var j=0;j<keys.length;j++){var ex=entry.exercises[keys[j]];var sts="";for(var k=0;k<ex.sets.length;k++){sts+='<span class="hst">'+ex.sets[k].weight+'kg \u00d7 '+ex.sets[k].reps+'</span>';}
+      exHtml+='<div class="he"><div class="hen">'+ex.name+'</div><div class="hss">'+sts+'</div></div>';}
+    h+='<div class="hc"><div class="hch"><span class="hcdn">'+entry.dayName+'</span><span class="hcdt">'+entry.date+'</span></div>'+exHtml+'</div>';}}
+  h+='</div>';app.innerHTML=h;
 }
-
 function renderMeas(app){
   var lastEntry=measHistory.length?measHistory[0]:{};
   var h='<div class="page">';
-  h+='<div style="text-align:center;margin-bottom:8px"><div style="font-size:18px;font-weight:700;color:#000">Body Measurements</div><div style="font-size:12px;color:#777;margin-top:4px">'+fmtDate(new Date())+' \u2022 cm</div></div>';
+  h+='<div style="text-align:center;margin-bottom:12px"><div style="font-size:18px;font-weight:700;color:#000">Body Measurements</div><div style="font-size:12px;color:#777;margin-top:4px">'+fmtDate(new Date())+' \u2022 cm</div></div>';
+  h+='<div class="bodymap">';
 
-  h+='<div class="bodymap" style="height:460px">';
+  h+='<img src="data:image/jpeg;base64,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" style="position:absolute;left:50%;transform:translateX(-50%);height:400px;top:30px;opacity:0.2" alt="">';
 
-  // SVG male back outline
-  h+='<svg viewBox="0 0 200 400" style="position:absolute;left:50%;transform:translateX(-50%);width:180px;height:360px;top:20px">';
-  // Head
-  h+='<ellipse cx="100" cy="28" rx="18" ry="22" fill="none" stroke="#ccc" stroke-width="1.5"/>';
-  // Neck
-  h+='<line x1="92" y1="50" x2="92" y2="62" stroke="#ccc" stroke-width="1.5"/>';
-  h+='<line x1="108" y1="50" x2="108" y2="62" stroke="#ccc" stroke-width="1.5"/>';
-  // Shoulders & torso
-  h+='<path d="M92,62 L60,75 L48,95 L45,140 L50,175 L55,190 L65,195 L80,190 L90,185 L100,183 L110,185 L120,190 L135,195 L145,190 L150,175 L155,140 L152,95 L140,75 L108,62" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  // Spine line
-  h+='<line x1="100" y1="62" x2="100" y2="183" stroke="#ddd" stroke-width="0.8" stroke-dasharray="3,3"/>';
-  // Glutes
-  h+='<path d="M80,190 Q75,210 78,225 Q85,235 100,235 Q115,235 122,225 Q125,210 120,190" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  h+='<line x1="100" y1="190" x2="100" y2="235" stroke="#ddd" stroke-width="0.8" stroke-dasharray="3,3"/>';
-  // Left leg
-  h+='<path d="M78,225 Q72,260 70,295 Q69,320 72,350 Q74,370 78,385" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  h+='<path d="M100,235 Q95,260 92,295 Q91,320 90,350 Q89,370 88,385" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  // Right leg
-  h+='<path d="M122,225 Q128,260 130,295 Q131,320 128,350 Q126,370 122,385" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  h+='<path d="M100,235 Q105,260 108,295 Q109,320 110,350 Q111,370 112,385" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  // Left arm
-  h+='<path d="M48,95 Q38,120 35,145 Q33,165 36,185 Q38,200 40,210" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  h+='<path d="M60,75 Q55,95 52,120 Q50,140 52,160 Q54,180 55,195" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  // Right arm
-  h+='<path d="M152,95 Q162,120 165,145 Q167,165 164,185 Q162,200 160,210" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  h+='<path d="M140,75 Q145,95 148,120 Q150,140 148,160 Q146,180 145,195" fill="none" stroke="#bbb" stroke-width="1.5"/>';
-  h+='</svg>';
 
-  // Measurement fields positioned around the body
-  // Chest - top center
-  h+='<div class="mfield" style="top:95px;left:50%;transform:translateX(-50%)">';
-  h+='<label>Chest</label>';
-  h+='<input type="number" inputmode="decimal" id="meas-chest" placeholder="-" value="'+(lastEntry.chest||"")+'">';
+
+  // Input fields positioned around silhouette
+  h+='<div class="mfield" style="top:98px;left:50%;transform:translateX(-50%)"><label>Chest</label><input type="number" inputmode="decimal" id="meas-chest" placeholder="-" value="'+(lastEntry.chest||"")+'"></div>';
+  h+='<div class="mfield" style="top:148px;left:0"><label>Bicep L</label><input type="number" inputmode="decimal" id="meas-bicep_l" placeholder="-" value="'+(lastEntry.bicep_l||"")+'"></div>';
+  h+='<div class="mfield" style="top:148px;right:0"><label>Bicep R</label><input type="number" inputmode="decimal" id="meas-bicep_r" placeholder="-" value="'+(lastEntry.bicep_r||"")+'"></div>';
+  h+='<div class="mfield" style="top:246px;left:50%;transform:translateX(-50%)"><label>Buttocks</label><input type="number" inputmode="decimal" id="meas-buttocks" placeholder="-" value="'+(lastEntry.buttocks||"")+'"></div>';
+  h+='<div class="mfield" style="top:328px;left:4px"><label>Quad L</label><input type="number" inputmode="decimal" id="meas-quad_l" placeholder="-" value="'+(lastEntry.quad_l||"")+'"></div>';
+  h+='<div class="mfield" style="top:328px;right:4px"><label>Quad R</label><input type="number" inputmode="decimal" id="meas-quad_r" placeholder="-" value="'+(lastEntry.quad_r||"")+'"></div>';
   h+='</div>';
 
-  // Bicep L - left side
-  h+='<div class="mfield" style="top:130px;left:2px">';
-  h+='<label>Bicep L</label>';
-  h+='<input type="number" inputmode="decimal" id="meas-bicep_l" placeholder="-" value="'+(lastEntry.bicep_l||"")+'">';
-  h+='</div>';
-
-  // Bicep R - right side
-  h+='<div class="mfield" style="top:130px;right:2px">';
-  h+='<label>Bicep R</label>';
-  h+='<input type="number" inputmode="decimal" id="meas-bicep_r" placeholder="-" value="'+(lastEntry.bicep_r||"")+'">';
-  h+='</div>';
-
-  // Buttocks - center
-  h+='<div class="mfield" style="top:230px;left:50%;transform:translateX(-50%)">';
-  h+='<label>Buttocks</label>';
-  h+='<input type="number" inputmode="decimal" id="meas-buttocks" placeholder="-" value="'+(lastEntry.buttocks||"")+'">';
-  h+='</div>';
-
-  // Quad L - lower left
-  h+='<div class="mfield" style="top:330px;left:12px">';
-  h+='<label>Quad L</label>';
-  h+='<input type="number" inputmode="decimal" id="meas-quad_l" placeholder="-" value="'+(lastEntry.quad_l||"")+'">';
-  h+='</div>';
-
-  // Quad R - lower right
-  h+='<div class="mfield" style="top:330px;right:12px">';
-  h+='<label>Quad R</label>';
-  h+='<input type="number" inputmode="decimal" id="meas-quad_r" placeholder="-" value="'+(lastEntry.quad_r||"")+'">';
-  h+='</div>';
-
-  h+='</div>'; // end bodymap
-
-  // History table
   if(measHistory.length){
-    h+='<div class="mhist">';
-    h+='<div style="font-size:14px;font-weight:700;color:#333;margin-bottom:8px">History</div>';
+    h+='<div class="mhist"><div style="font-size:14px;font-weight:700;color:#333;margin-bottom:8px">History</div>';
     h+='<div style="overflow-x:auto"><div style="min-width:380px">';
     h+='<div class="mhrow mhhead"><div class="mhcell">Date</div><div class="mhcell">Chest</div><div class="mhcell">Bi L</div><div class="mhcell">Bi R</div><div class="mhcell">Butt</div><div class="mhcell">Qu L</div><div class="mhcell">Qu R</div></div>';
-    for(var i=0;i<measHistory.length&&i<20;i++){
-      var e=measHistory[i];
-      h+='<div class="mhrow"><div class="mhcell">'+e.date+'</div><div class="mhcell">'+(e.chest||"-")+'</div><div class="mhcell">'+(e.bicep_l||"-")+'</div><div class="mhcell">'+(e.bicep_r||"-")+'</div><div class="mhcell">'+(e.buttocks||"-")+'</div><div class="mhcell">'+(e.quad_l||"-")+'</div><div class="mhcell">'+(e.quad_r||"-")+'</div></div>';
-    }
+    for(var i=0;i<measHistory.length&&i<20;i++){var e=measHistory[i];
+      h+='<div class="mhrow"><div class="mhcell">'+e.date+'</div><div class="mhcell">'+(e.chest||"-")+'</div><div class="mhcell">'+(e.bicep_l||"-")+'</div><div class="mhcell">'+(e.bicep_r||"-")+'</div><div class="mhcell">'+(e.buttocks||"-")+'</div><div class="mhcell">'+(e.quad_l||"-")+'</div><div class="mhcell">'+(e.quad_r||"-")+'</div></div>';}
     h+='</div></div></div>';
   }
-
   h+='<div class="savebar"><button class="savebtn" onclick="saveMeas()">Save Measurements</button><button class="expbtn" onclick="exportMeasCSV()">Export CSV</button></div>';
-  h+='</div>';
-  app.innerHTML=h;
+  h+='</div>';app.innerHTML=h;
 }
-
-loadStorage();
-render();
+loadStorage();render();
 </script>
 </body>
 </html>
