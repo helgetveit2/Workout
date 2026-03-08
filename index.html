@@ -324,7 +324,7 @@ function syncToGitHub(filename,data){
     xhr2.onreadystatechange=function(){
       if(xhr2.readyState!==4)return;
       if(xhr2.status===200||xhr2.status===201){showToast("Synced "+filename);}
-      else{showToast("Sync failed: "+filename,true);}
+      else{var msg="Sync failed ("+xhr2.status+")";try{var r=JSON.parse(xhr2.responseText);if(r.message)msg+=": "+r.message;}catch(e){}showToast(msg,true);}
     };
     xhr2.send(JSON.stringify(body));
   };
