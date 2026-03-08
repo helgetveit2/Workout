@@ -99,6 +99,14 @@ input::-webkit-outer-spin-button,input::-webkit-inner-spin-button{-webkit-appear
 .mhcell:first-child{text-align:left}
 .toast{position:fixed;top:60px;left:50%;transform:translateX(-50%);background:#1a6b1a;color:#fff;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;z-index:100;opacity:0;transition:opacity 0.3s}
 .toast.show{opacity:1}
+.toast.fail{background:#cc4444}
+.setbtn{background:none;border:1px solid #bbb;border-radius:6px;color:#666;font-size:11px;padding:6px 12px;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase;margin-top:12px}
+.sform{background:#f7f7f7;border:1px solid #ccc;border-radius:8px;padding:16px;margin-top:16px}
+.sform label{font-size:13px;font-weight:600;color:#333;display:block;margin-bottom:6px}
+.sform input{width:100%;background:#fff;border:1px solid #bbb;border-radius:4px;color:#111;font-size:14px;padding:10px;font-family:inherit;outline:none;margin-bottom:12px}
+.sform input:focus{border-color:#1a6b1a}
+.sform .sbtn{background:#e0f0e0;border:1px solid #80b880;border-radius:8px;color:#1a6b1a;font-size:13px;font-weight:700;padding:12px;width:100%;cursor:pointer;font-family:inherit;letter-spacing:1px;text-transform:uppercase}
+.syncst{font-size:11px;color:#777;margin-top:6px;letter-spacing:0.5px}
 </style>
 </head>
 <body>
@@ -137,6 +145,7 @@ var PROGRAM = [
   ]}
 ];
 var MEAS_FIELDS=[{id:"chest",label:"Chest"},{id:"bicep_l",label:"Bicep L"},{id:"bicep_r",label:"Bicep R"},{id:"buttocks",label:"Buttocks"},{id:"quad_l",label:"Quad L"},{id:"quad_r",label:"Quad R"}];
+var GH_REPO="helgetveit2/workout-data";
 var workoutData={};var historyData=[];var notesData={};var checkedSets={};var collapsed={};var measHistory=[];
 var currentView="home";var currentDay=null;var currentTab="rt";var timerInt=null;var timerSec=0;var openNotes={};
 
@@ -153,7 +162,7 @@ function saveAll(){
 function fmtDate(d){var days=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];var months=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];return days[d.getDay()]+" "+d.getDate()+" "+months[d.getMonth()]+" "+d.getFullYear();}
 function isoDate(d){var y=d.getFullYear();var m=d.getMonth()+1;if(m<10)m="0"+m;var day=d.getDate();if(day<10)day="0"+day;return y+"-"+m+"-"+day;}
 function esc(s){if(!s)return"";return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");}
-function showToast(msg){var t=document.getElementById("toast");t.textContent=msg;t.className="toast show";setTimeout(function(){t.className="toast";},2000);}
+function showToast(msg,fail){var t=document.getElementById("toast");t.textContent=msg;t.className=fail?"toast fail show":"toast show";setTimeout(function(){t.className="toast";},2500);}
 function switchTab(tab){currentTab=tab;document.getElementById("tab-rt").className=tab==="rt"?"tab active":"tab";document.getElementById("tab-meas").className=tab==="meas"?"tab active":"tab";if(tab==="rt"){currentView="home";currentDay=null;}render();}
 function getSet(dayId,exId,i){var k=dayId+"_"+exId;if(workoutData[k]&&workoutData[k][i])return workoutData[k][i];return{weight:"",reps:""};}
 function setSet(dayId,exId,i,field,val){var k=dayId+"_"+exId;if(!workoutData[k])workoutData[k]=[];if(!workoutData[k][i])workoutData[k][i]={weight:"",reps:""};workoutData[k][i][field]=val;saveAll();}
@@ -173,7 +182,7 @@ function finish(dayId){
   for(var i=0;i<day.exercises.length;i++){var ex=day.exercises[i];var k=dayId+"_"+ex.id;if(workoutData[k]){var filled=[];for(var j=0;j<workoutData[k].length;j++){var s=workoutData[k][j];if(s&&(s.weight||s.reps))filled.push(s);}if(filled.length)entry.exercises[ex.id]={name:ex.name,sets:filled};}}
   historyData.unshift(entry);if(historyData.length>100)historyData=historyData.slice(0,100);
   for(var i=0;i<day.exercises.length;i++){var ek=dayId+"_"+day.exercises[i].id;delete workoutData[ek];for(var j=0;j<day.exercises[i].sets;j++){delete checkedSets[ek+"_"+j];}delete collapsed[ek];}
-  saveAll();stopT();currentView="home";currentDay=null;render();
+  saveAll();syncWorkouts();stopT();currentView="home";currentDay=null;render();
 }
 function delWorkout(dayId){
   if(!confirm("Delete current workout data?"))return;
@@ -191,7 +200,7 @@ function saveMeas(){
   var entry={date:isoDate(new Date())};var hasData=false;
   for(var i=0;i<MEAS_FIELDS.length;i++){var el=document.getElementById("meas-"+MEAS_FIELDS[i].id);var val=el?el.value.trim():"";entry[MEAS_FIELDS[i].id]=val;if(val)hasData=true;}
   if(!hasData){alert("Enter at least one measurement.");return;}
-  measHistory.unshift(entry);if(measHistory.length>200)measHistory=measHistory.slice(0,200);saveAll();showToast("Measurements saved!");render();
+  measHistory.unshift(entry);if(measHistory.length>200)measHistory=measHistory.slice(0,200);saveAll();syncMeasurements();showToast("Measurements saved!");render();
 }
 function exportMeasCSV(){
   var header="Date,Chest,Bicep L,Bicep R,Buttocks,Quad L,Quad R\n";var rows="";
@@ -201,7 +210,7 @@ function exportMeasCSV(){
 function render(){
   var app=document.getElementById("app");
   if(currentTab==="meas"){renderMeas(app);return;}
-  if(currentView==="home")renderHome(app);else if(currentView==="workout")renderWO(app);else if(currentView==="history")renderHist(app);
+  if(currentView==="home")renderHome(app);else if(currentView==="workout")renderWO(app);else if(currentView==="history")renderHist(app);else if(currentView==="settings")renderSettings(app);
 }
 function renderHome(app){
   var h='<div class="page"><div class="hh"><div class="ht">HELGE</div><div class="hs">TRAINING LOG</div><div class="hd">'+fmtDate(new Date())+'</div></div>';
@@ -213,7 +222,9 @@ function renderHome(app){
     var prog=hasData?'<div class="inp">In progress</div>':"";var ld=getLastDate(day.id);var ldLine=ld?'<div class="lwd">Last: '+ld+'</div>':"";
     h+='<div class="dc" onclick="goDay(\''+day.id+'\')"><div class="dch"><span class="dcn">'+day.name+'</span><span class="dcl">'+day.dayLabel+'</span></div>'+exList+pairLine+prog+ldLine+'</div>';
   }
-  h+='<div class="hb" onclick="goHist()">View History</div></div>';app.innerHTML=h;
+  h+='<div class="hb" onclick="goHist()">View History</div>';
+  h+='<button class="setbtn" onclick="goSettings()">\u2699 Settings</button>';
+  h+='</div>';app.innerHTML=h;
 }
 function renderWO(app){
   var day=null;for(var i=0;i<PROGRAM.length;i++){if(PROGRAM[i].id===currentDay)day=PROGRAM[i];}
@@ -284,6 +295,77 @@ function renderMeas(app){
   h+='<div class="savebar"><button class="savebtn" onclick="saveMeas()">Save Measurements</button><button class="expbtn" onclick="exportMeasCSV()">Export CSV</button></div>';
   h+='</div>';app.innerHTML=h;
 }
+function getGHToken(){try{return localStorage.getItem("ht-gh-token")||"";}catch(e){return"";}}
+function saveGHToken(val){try{localStorage.setItem("ht-gh-token",val);}catch(e){}}
+
+function syncToGitHub(filename,data){
+  var token=getGHToken();
+  if(!token)return;
+  var url="https://api.github.com/repos/"+GH_REPO+"/contents/"+filename;
+  var content=btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2))));
+  var xhr=new XMLHttpRequest();
+  xhr.open("GET",url,true);
+  xhr.setRequestHeader("Authorization","Bearer "+token);
+  xhr.setRequestHeader("Accept","application/vnd.github.v3+json");
+  xhr.onreadystatechange=function(){
+    if(xhr.readyState!==4)return;
+    var sha=null;
+    if(xhr.status===200){try{sha=JSON.parse(xhr.responseText).sha;}catch(e){}}
+    var body={message:"Update "+filename,content:content};
+    if(sha)body.sha=sha;
+    var xhr2=new XMLHttpRequest();
+    xhr2.open("PUT",url,true);
+    xhr2.setRequestHeader("Authorization","Bearer "+token);
+    xhr2.setRequestHeader("Accept","application/vnd.github.v3+json");
+    xhr2.setRequestHeader("Content-Type","application/json");
+    xhr2.onreadystatechange=function(){
+      if(xhr2.readyState!==4)return;
+      if(xhr2.status===200||xhr2.status===201){showToast("Synced "+filename);}
+      else{showToast("Sync failed: "+filename,true);}
+    };
+    xhr2.send(JSON.stringify(body));
+  };
+  xhr.send();
+}
+
+function syncWorkouts(){syncToGitHub("workout_history.json",historyData);}
+function syncMeasurements(){syncToGitHub("measurements.json",measHistory);}
+
+function goSettings(){currentView="settings";render();}
+function saveTokenForm(){
+  var el=document.getElementById("gh-token-input");
+  if(el){saveGHToken(el.value.trim());showToast("Token saved");render();}
+}
+function clearToken(){
+  if(!confirm("Remove GitHub token?"))return;
+  try{localStorage.removeItem("ht-gh-token");}catch(e){}
+  showToast("Token removed");render();
+}
+
+function renderSettings(app){
+  var token=getGHToken();var masked=token?token.substring(0,8)+"..."+token.substring(token.length-4):"";
+  var h='<div class="page"><div class="hdr"><button class="bb" onclick="goHome()">\u2190 Back</button><div class="pt">Settings</div></div>';
+  h+='<div class="sform"><label>GitHub Personal Access Token</label>';
+  h+='<div style="font-size:12px;color:#777;margin-bottom:8px">Fine-grained token scoped to <b>'+esc(GH_REPO)+'</b> with Contents read/write.</div>';
+  if(token){
+    h+='<div style="font-size:13px;color:#1a6b1a;margin-bottom:8px">Current: '+esc(masked)+'</div>';
+    h+='<button class="sbtn" onclick="clearToken()">Remove Token</button>';
+    h+='<div style="margin-top:16px"><label>Update Token</label><input id="gh-token-input" type="text" placeholder="github_pat_..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button class="sbtn" onclick="saveTokenForm()">Save Token</button></div>';
+  }else{
+    h+='<input id="gh-token-input" type="text" placeholder="github_pat_..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">';
+    h+='<button class="sbtn" onclick="saveTokenForm()">Save Token</button>';
+  }
+  h+='</div>';
+  if(token){
+    h+='<div class="sform" style="margin-top:12px"><label>Manual Sync</label>';
+    h+='<div style="font-size:12px;color:#777;margin-bottom:8px">Sync happens automatically on Finish Workout and Save Measurements. Use these buttons for manual sync.</div>';
+    h+='<button class="sbtn" onclick="syncWorkouts()" style="margin-bottom:8px">Sync Workouts Now</button>';
+    h+='<button class="sbtn" onclick="syncMeasurements()">Sync Measurements Now</button>';
+    h+='</div>';
+  }
+  h+='</div>';app.innerHTML=h;
+}
+
 loadStorage();render();
 </script>
 </body>
